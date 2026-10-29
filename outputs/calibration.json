@@ -7,6 +7,10 @@
     "end": "2016-05-31",
     "rows": 16710
   },
+  "ece_binning": {
+    "bins": 10,
+    "strategy": "equal-count (quantile) bins of predicted risk"
+  },
   "method_choice_brier_leave_one_day_out": {
     "platt": 0.1386,
     "isotonic": 0.13878,

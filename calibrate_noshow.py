@@ -17,12 +17,24 @@ contributions be rescaled exactly (calibrated contribution = slope * SHAP).
 Caveat: the validation week was also used for XGBoost early stopping, so it is
 not completely untouched - but it is disjoint from the held-out test week.
 
+ECE (expected calibration error): scores are split into 10 equal-COUNT bins (deciles of the
+predicted probability, via pd.qcut), not equal-width bins, so every bin has about the same
+number of appointments even though most scores sit between 5% and 40%. ECE is the
+size-weighted average of |mean predicted - observed rate| over those bins. Ten bins on ~26k
+test rows is ~2,600 per bin, enough that sampling noise in each bin is about +/-1 point; the
+absolute value of ECE depends on the binning, so compare it only against figures that use
+the same 10 equal-count bins. The reliability diagram uses the same bins.
+
 Output:
-    outputs/calibration.json  - Platt slope/intercept + before/after metrics
+    outputs/calibration.json       - Platt slope/intercept + before/after metrics
+    outputs/calibration_curve.png  - before/after reliability diagram on the held-out test week
 """
 
 import json
 
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import xgboost as xgb
@@ -58,7 +70,10 @@ def logit(p):
     return np.log(p / (1 - p))
 
 
-def ece(y, p, bins=10):
+ECE_BINS = 10  # equal-count (quantile) bins; see the module docstring
+
+
+def ece(y, p, bins=ECE_BINS):
     """Expected calibration error over equal-count risk bins."""
     q = pd.qcut(p, bins, labels=False, duplicates="drop")
     g = pd.DataFrame({"y": y, "p": p, "q": q}).groupby("q")
@@ -118,6 +133,29 @@ def report(name, y, p_raw):
     return out
 
 
+def reliability_diagram(y, p_raw, path):
+    """Predicted vs observed no-show rate per equal-count bin, before and after Platt scaling.
+    Platt is monotonic, so the bins hold the same appointments before and after."""
+    y = np.asarray(y)
+    q = pd.qcut(p_raw, ECE_BINS, labels=False, duplicates="drop")
+    fig, ax = plt.subplots(figsize=(5.5, 5.5))
+    top = 0
+    for label, p, style in [("Before (raw XGBoost)", p_raw, dict(marker="o", color="#c2410c")),
+                            ("After (Platt scaling)", calibrate(p_raw), dict(marker="s", color="#0f766e"))]:
+        g = pd.DataFrame({"y": y, "p": p, "q": q}).groupby("q").mean()
+        ax.plot(g["p"], g["y"], lw=1.8, label=f"{label}, ECE {ece(y, p):.3f}", **style)
+        top = max(top, g["p"].max(), g["y"].max())
+    lim = float(np.ceil(top * 20) / 20)
+    ax.plot([0, lim], [0, lim], ls="--", c="grey", label="Perfect calibration")
+    ax.set(xlim=(0, lim), ylim=(0, lim), xlabel="Mean predicted no-show risk (per bin)",
+           ylabel="Observed no-show rate (per bin)",
+           title=f"Reliability on the held-out test week\n({ECE_BINS} equal-count bins, n={len(y):,})")
+    ax.legend(loc="upper left", fontsize=8)
+    fig.tight_layout()
+    fig.savefig(path, dpi=150)
+    plt.close(fig)
+
+
 result = {
     "method": "platt",
     "slope": round(slope, 6),
@@ -127,6 +165,7 @@ result = {
         "end": str(valid["appointment_date"].max().date()),
         "rows": int(len(valid)),
     },
+    "ece_binning": {"bins": ECE_BINS, "strategy": "equal-count (quantile) bins of predicted risk"},
     "method_choice_brier_leave_one_day_out": method_scores,
     "validation": report("Validation week (in-sample for the calibrator)", valid[TARGET].values, p_valid),
     "test": report("Held-out test week", test[TARGET].values, raw_scores(test)),
@@ -136,3 +175,6 @@ print(f"\nPlatt: calibrated log-odds = {slope:.4f} * raw log-odds + {intercept:.
 with open(f"{OUT_DIR}/calibration.json", "w") as f:
     json.dump(result, f, indent=2)
 print(f"Saved {OUT_DIR}/calibration.json")
+
+reliability_diagram(test[TARGET].values, raw_scores(test), f"{OUT_DIR}/calibration_curve.png")
+print(f"Saved {OUT_DIR}/calibration_curve.png")
