@@ -1,6 +1,7 @@
 # data and large artefacts
 KaggleV2-May-2016.csv
 *.pkl
+noshow_features.parquet
 
 # python / OS / tooling
 __pycache__/

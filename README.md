@@ -129,4 +129,4 @@ uvicorn dashboard.server:app --reload
 
 ## Data and licence
 
-Data: [Medical Appointment No Shows](https://www.kaggle.com/datasets/joniarroba/noshowappointments) by Joni Hoppen (Aquarela Analytics), used under the terms on its Kaggle page. The raw CSV is not included in this repository. `noshow_features.parquet` is a cleaned, derived table; check the dataset's terms before redistributing it. Code: MIT, see `LICENSE`. [TODO: confirm the licence line and copyright holder.]
+Data: [Medical Appointment No Shows](https://www.kaggle.com/datasets/joniarroba/noshowappointments) by Joni Hoppen (Aquarela Analytics), used under the terms on its Kaggle page. Neither the raw CSV nor the cleaned feature table (`noshow_features.parquet`) is included in this repository; `prep_noshow.py` builds the table from the CSV you download. Code: MIT, see `LICENSE`. [TODO: confirm the licence line and copyright holder.]
