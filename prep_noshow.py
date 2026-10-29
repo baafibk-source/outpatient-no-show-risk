@@ -243,4 +243,4 @@ if __name__ == "__main__":
     train, test = time_split(df)
 
     df.to_parquet(OUT_PATH, index=False)  # pyarrow keeps dtypes (categories, dates) intact
-    print(f"\nSaved {len(df):,} rows and {len(FEATURES)} features to {OUT_PATH}")
+    print(f"\nSaved {len(df):,} rows to {OUT_PATH} ({len(FEATURES)} candidate features; the shipped model uses 16, see model_noshow.py --drop-sensitive)")
