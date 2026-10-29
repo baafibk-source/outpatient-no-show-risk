@@ -35,6 +35,8 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from prep_noshow import to_other
+
 log = logging.getLogger("dna")
 
 HERE = Path(__file__).resolve().parent
@@ -102,13 +104,9 @@ LABELS = {
     "booked_hour": "Hour booking was made",
     "sms_received": "SMS reminder sent",
     "age": "Age",
-    "is_male": "Male",
-    "welfare_programme": "Welfare programme",
     "hypertension": "Hypertension",
     "diabetes": "Diabetes",
     "alcoholism": "Alcoholism",
-    "has_handicap": "Disability recorded",
-    "n_conditions": "Recorded conditions",
     "prior_appts": "Previous appointments",
     "prior_no_shows": "Previous no-shows",
     "prior_no_show_rate": "Previous no-show rate",
@@ -117,8 +115,7 @@ LABELS = {
     "multiple_appts_same_day": "Several appointments that day",
     "neighbourhood": "Clinic neighbourhood",
 }
-BINARY = {"same_day_booking", "sms_received", "is_male", "welfare_programme",
-          "hypertension", "diabetes", "alcoholism", "has_handicap",
+BINARY = {"same_day_booking", "sms_received", "hypertension", "diabetes", "alcoholism",
           "is_first_appt", "multiple_appts_same_day"}
 
 ACTIONS = {
@@ -433,12 +430,10 @@ async def security_headers(request: Request, call_next):
 class AppointmentIn(Strict):
     lead_time_days: int = Field(14, ge=0, le=365)
     age: int = Field(35, ge=0, le=110)
-    sex: Literal["Female", "Male"] = "Female"
     weekday: Literal["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] = "Tuesday"
     booked_hour: int = Field(10, ge=0, le=23)
     sms_received: bool = True
-    welfare_programme: bool = False
-    conditions: List[Literal["Hypertension", "Diabetes", "Alcoholism", "Disability"]] = Field([], max_length=4)
+    conditions: List[Literal["Hypertension", "Diabetes", "Alcoholism"]] = Field([], max_length=3)
     prior_appts: int = Field(0, ge=0, le=500)
     prior_no_shows: int = Field(0, ge=0, le=500)
     days_since_last_appt: int = Field(0, ge=0, le=3650)
@@ -456,21 +451,17 @@ def build_row(a: AppointmentIn) -> pd.DataFrame:
         "booked_hour": a.booked_hour,
         "sms_received": int(a.sms_received),
         "age": a.age,
-        "is_male": int(a.sex == "Male"),
-        "welfare_programme": int(a.welfare_programme),
         "hypertension": has("Hypertension"),
         "diabetes": has("Diabetes"),
         "alcoholism": has("Alcoholism"),
-        "has_handicap": has("Disability"),
         "prior_appts": a.prior_appts,
         "prior_no_shows": prior_no_shows,
         "is_first_appt": int(a.prior_appts == 0),
         "prior_no_show_rate": prior_no_shows / a.prior_appts if a.prior_appts > 0 else -1.0,
         "days_since_last_appt": a.days_since_last_appt if a.prior_appts > 0 else -1,
         "multiple_appts_same_day": int(a.multiple_appts_same_day),
-        "neighbourhood": a.neighbourhood if a.neighbourhood in NEIGHBOURHOODS else DEFAULT_HOOD,
+        "neighbourhood": to_other(a.neighbourhood, NEIGHBOURHOODS),
     }
-    row["n_conditions"] = row["hypertension"] + row["diabetes"] + row["alcoholism"] + row["has_handicap"]
     return to_frame(pd.DataFrame([row]))
 
 
@@ -579,7 +570,6 @@ def list_appointments(date: Optional[str] = Query(None, pattern=r"^\d{4}-\d{2}-\
         "date": r.date,
         "neighbourhood": r.neighbourhood,
         "age": int(r.age),
-        "sex": "Male" if r.is_male else "Female",
         "lead_time_days": int(r.lead_time_days),
         "sms_received": bool(r.sms_received),
         "prior_appts": int(r.prior_appts),

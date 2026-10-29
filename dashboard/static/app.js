@@ -338,7 +338,7 @@ async function initWorklist() {
   if (!state.meta.has_worklist) {
     fill($("#view-worklist"), h("div", { class: "card chart-card" },
       h("h2", null, "Worklist unavailable"),
-      h("p", { class: "muted note" }, "The server couldn't find ", h("code", null, "noshow_features.pkl"), ". Run ",
+      h("p", { class: "muted note" }, "The server couldn't find ", h("code", null, "noshow_features.parquet"), ". Run ",
         h("code", null, "python prep_noshow.py"), " in the project folder, then restart the server. The Risk check still works.")));
     return;
   }
@@ -489,7 +489,7 @@ function rowNode(r) {
         r.appts_that_day > 1 ? tipLines(h("span", { class: "repeat-badge" }, `${r.appts_that_day} bookings`),
           [`This patient has ${r.appts_that_day} bookings on this day`]) : null),
       h("div", { class: "appt-hood" }, r.neighbourhood)),
-    h("td", { class: "num hide-sm" }, String(r.age), " ", h("span", { class: "muted small" }, r.sex[0])),
+    h("td", { class: "num hide-sm" }, String(r.age)),
     h("td", { class: "num", "data-label": "Booked" }, r.lead_time_days === 0 ? "Same day" : `${r.lead_time_days} d`),
     h("td", { class: "num", "data-label": r.prior_appts ? "Missed" : null },
       r.prior_appts ? `${r.prior_no_shows} of ${r.prior_appts}` : h("span", { class: "muted" }, "First visit")),
@@ -626,11 +626,11 @@ async function loadDetail(id, animate = true) {
 // ---------------------------------------------------------------------------
 const EXAMPLES = [
   { name: "Same-day booking", note: "Reliable attender", band: "Low",
-    v: { lead_time_days: 0, age: 45, sex: "Female", weekday: "Monday", booked_hour: 9, sms_received: false, prior_appts: 2, prior_no_shows: 0, days_since_last_appt: 30 } },
+    v: { lead_time_days: 0, age: 45, weekday: "Monday", booked_hour: 9, sms_received: false, prior_appts: 2, prior_no_shows: 0, days_since_last_appt: 30 } },
   { name: "Booked 6 weeks ahead", note: "Missed 3 of last 4", band: "High",
-    v: { lead_time_days: 45, age: 19, sex: "Male", weekday: "Friday", booked_hour: 16, sms_received: true, prior_appts: 4, prior_no_shows: 3, days_since_last_appt: 10 } },
+    v: { lead_time_days: 45, age: 19, weekday: "Friday", booked_hour: 16, sms_received: true, prior_appts: 4, prior_no_shows: 3, days_since_last_appt: 10 } },
   { name: "Older regular attender", note: "Two weeks ahead", band: "Medium",
-    v: { lead_time_days: 14, age: 68, sex: "Female", weekday: "Wednesday", booked_hour: 11, sms_received: true, conditions: ["Hypertension", "Diabetes"], prior_appts: 6, prior_no_shows: 0, days_since_last_appt: 21 } },
+    v: { lead_time_days: 14, age: 68, weekday: "Wednesday", booked_hour: 11, sms_received: true, conditions: ["Hypertension", "Diabetes"], prior_appts: 6, prior_no_shows: 0, days_since_last_appt: 21 } },
 ];
 
 function initCheck() {
@@ -669,12 +669,11 @@ function initCheck() {
 
 function fillForm(v) {
   const form = $("#check-form");
-  const d = { lead_time_days: 14, age: 35, sex: "Female", weekday: "Tuesday", booked_hour: 10, sms_received: true,
-    welfare_programme: false, conditions: [], prior_appts: 0, prior_no_shows: 0, days_since_last_appt: 0,
+  const d = { lead_time_days: 14, age: 35, weekday: "Tuesday", booked_hour: 10, sms_received: true,
+    conditions: [], prior_appts: 0, prior_no_shows: 0, days_since_last_appt: 0,
     multiple_appts_same_day: false, ...v };
   for (const [k, val] of Object.entries(d)) {
     if (k === "conditions") $$('[name="conditions"]', form).forEach((c) => { c.checked = val.includes(c.value); });
-    else if (k === "sex") $$('[name="sex"]', form).forEach((r) => { r.checked = r.value === val; });
     else if (typeof val === "boolean") form[k].checked = val;
     else form[k].value = val;
   }
@@ -698,9 +697,8 @@ function readForm() {
   const n = (x, max) => Math.min(max, Math.max(0, parseInt(x, 10) || 0));
   return {
     lead_time_days: n(f.lead_time_days.value, 365), age: n(f.age.value, 110),
-    sex: f.querySelector('[name="sex"]:checked').value, weekday: f.weekday.value,
+    weekday: f.weekday.value,
     booked_hour: n(f.booked_hour.value, 23), sms_received: f.sms_received.checked,
-    welfare_programme: f.welfare_programme.checked,
     conditions: $$('[name="conditions"]:checked', f).map((c) => c.value),
     prior_appts: n(f.prior_appts.value, 500), prior_no_shows: n(f.prior_no_shows.value, 500),
     days_since_last_appt: n(f.days_since_last_appt.value, 3650),

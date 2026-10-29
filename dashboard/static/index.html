@@ -165,29 +165,18 @@
 
           <fieldset>
             <legend>Patient</legend>
-            <div class="row2">
-              <label class="field range">
-                <span>Age <output id="o-age">35</output></span>
-                <input type="range" name="age" min="0" max="100" value="35">
-              </label>
-              <div class="field">
-                <span id="sex-label">Sex</span>
-                <div class="seg small" role="radiogroup" aria-labelledby="sex-label">
-                  <label><input type="radio" name="sex" value="Female" checked><span>Female</span></label>
-                  <label><input type="radio" name="sex" value="Male"><span>Male</span></label>
-                </div>
-              </div>
-            </div>
+            <label class="field range">
+              <span>Age <output id="o-age">35</output></span>
+              <input type="range" name="age" min="0" max="100" value="35">
+            </label>
             <div class="field">
               <span id="cond-label">Recorded conditions</span>
               <div class="chips" role="group" aria-labelledby="cond-label">
                 <label><input type="checkbox" name="conditions" value="Hypertension"><span>Hypertension</span></label>
                 <label><input type="checkbox" name="conditions" value="Diabetes"><span>Diabetes</span></label>
                 <label><input type="checkbox" name="conditions" value="Alcoholism"><span>Alcoholism</span></label>
-                <label><input type="checkbox" name="conditions" value="Disability"><span>Disability</span></label>
               </div>
             </div>
-            <label class="check"><input type="checkbox" name="welfare_programme"> Enrolled in welfare programme</label>
           </fieldset>
 
           <fieldset>

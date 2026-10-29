@@ -26,13 +26,9 @@
     "booked_hour",
     "sms_received",
     "age",
-    "is_male",
-    "welfare_programme",
     "hypertension",
     "diabetes",
     "alcoholism",
-    "has_handicap",
-    "n_conditions",
     "prior_appts",
     "prior_no_shows",
     "prior_no_show_rate",
@@ -41,24 +37,29 @@
     "multiple_appts_same_day",
     "neighbourhood"
   ],
-  "dropped_sensitive_features": [],
-  "xgboost_best_iteration": 232,
+  "dropped_sensitive_features": [
+    "welfare_programme",
+    "is_male",
+    "has_handicap",
+    "n_conditions"
+  ],
+  "xgboost_best_iteration": 242,
   "test": {
     "Logistic Regression": {
       "roc_auc": 0.728,
-      "pr_auc": 0.338,
-      "pr_auc_lift_vs_random": 1.829,
+      "pr_auc": 0.336,
+      "pr_auc_lift_vs_random": 1.823,
       "brier": 0.138,
-      "noshows_captured_top10pct": 0.203,
-      "noshows_captured_top20pct": 0.372
+      "noshows_captured_top10pct": 0.2,
+      "noshows_captured_top20pct": 0.371
     },
     "XGBoost": {
       "roc_auc": 0.733,
-      "pr_auc": 0.345,
-      "pr_auc_lift_vs_random": 1.868,
-      "brier": 0.136,
-      "noshows_captured_top10pct": 0.206,
-      "noshows_captured_top20pct": 0.378
+      "pr_auc": 0.341,
+      "pr_auc_lift_vs_random": 1.846,
+      "brier": 0.137,
+      "noshows_captured_top10pct": 0.202,
+      "noshows_captured_top20pct": 0.373
     }
   },
   "xgboost_test_ci": {
@@ -67,13 +68,13 @@
       0.74
     ],
     "capture_top20_ci95": [
-      0.365,
-      0.388
+      0.361,
+      0.385
     ]
   },
   "ablations": {
     "xgboost_lead_time_only_roc_auc": 0.688,
-    "xgboost_without_history_features_roc_auc": 0.722,
-    "xgboost_all_selected_features_roc_auc": 0.7327
+    "xgboost_without_history_features_roc_auc": 0.7204,
+    "xgboost_all_selected_features_roc_auc": 0.7326
   }
 }

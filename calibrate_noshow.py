@@ -30,7 +30,7 @@ from sklearn.isotonic import IsotonicRegression
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import brier_score_loss, roc_auc_score
 
-from prep_noshow import FEATURES, TARGET, time_split
+from prep_noshow import TARGET, time_split
 
 DATA_PATH = "noshow_features.parquet"
 OUT_DIR = "outputs"
@@ -40,7 +40,9 @@ train_full, test = time_split(df, test_frac=0.2)
 train, valid = time_split(train_full, test_frac=0.15)  # same split as model_noshow.py
 
 with open(f"{OUT_DIR}/model_features.json") as f:
-    categories = json.load(f)["neighbourhood_categories"]
+    _meta = json.load(f)
+categories = _meta["neighbourhood_categories"]
+FEATURES = _meta["features"]  # whatever the model was trained on (e.g. without --drop-sensitive features)
 model = xgb.XGBClassifier()
 model.load_model(f"{OUT_DIR}/xgb_noshow.json")
 

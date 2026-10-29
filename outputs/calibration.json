@@ -1,7 +1,7 @@
 {
   "method": "platt",
-  "slope": 0.961625,
-  "intercept": -0.209961,
+  "slope": 0.947403,
+  "intercept": -0.232718,
   "fitted_on": {
     "start": "2016-05-24",
     "end": "2016-05-31",
@@ -9,44 +9,44 @@
   },
   "method_choice_brier_leave_one_day_out": {
     "platt": 0.1386,
-    "isotonic": 0.13868,
-    "raw": 0.13913
+    "isotonic": 0.13878,
+    "raw": 0.1393
   },
   "validation": {
     "before": {
-      "brier": 0.1392,
-      "ece": 0.0252,
-      "mean_predicted": 0.2177,
-      "top_decile_predicted": 0.4824,
-      "top_decile_observed": 0.3992,
-      "roc_auc": 0.7419
+      "brier": 0.1393,
+      "ece": 0.026,
+      "mean_predicted": 0.219,
+      "top_decile_predicted": 0.4874,
+      "top_decile_observed": 0.4087,
+      "roc_auc": 0.7423
     },
     "after": {
       "brier": 0.1382,
-      "ece": 0.015,
+      "ece": 0.0137,
       "mean_predicted": 0.193,
-      "top_decile_predicted": 0.4316,
-      "top_decile_observed": 0.3992,
-      "roc_auc": 0.7419
+      "top_decile_predicted": 0.4309,
+      "top_decile_observed": 0.4087,
+      "roc_auc": 0.7423
     },
     "observed_rate": 0.193
   },
   "test": {
     "before": {
-      "brier": 0.1363,
-      "ece": 0.0252,
-      "mean_predicted": 0.2097,
-      "top_decile_predicted": 0.47,
-      "top_decile_observed": 0.3812,
-      "roc_auc": 0.7327
+      "brier": 0.1367,
+      "ece": 0.0274,
+      "mean_predicted": 0.212,
+      "top_decile_predicted": 0.4785,
+      "top_decile_observed": 0.3722,
+      "roc_auc": 0.7326
     },
     "after": {
-      "brier": 0.1353,
-      "ece": 0.0129,
-      "mean_predicted": 0.1859,
-      "top_decile_predicted": 0.4202,
-      "top_decile_observed": 0.3812,
-      "roc_auc": 0.7327
+      "brier": 0.1355,
+      "ece": 0.0146,
+      "mean_predicted": 0.1868,
+      "top_decile_predicted": 0.4231,
+      "top_decile_observed": 0.3722,
+      "roc_auc": 0.7326
     },
     "observed_rate": 0.1846
   }
