@@ -32,10 +32,10 @@ from sklearn.metrics import brier_score_loss, roc_auc_score
 
 from prep_noshow import FEATURES, TARGET, time_split
 
-DATA_PATH = "noshow_features.pkl"
+DATA_PATH = "noshow_features.parquet"
 OUT_DIR = "outputs"
 
-df = pd.read_pickle(DATA_PATH)
+df = pd.read_parquet(DATA_PATH)
 train_full, test = time_split(df, test_frac=0.2)
 train, valid = time_split(train_full, test_frac=0.15)  # same split as model_noshow.py
 

@@ -11,7 +11,8 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from prep_noshow import add_history_features, time_split  # noqa: E402
+from prep_noshow import (OTHER, add_history_features, group_rare_neighbourhoods,  # noqa: E402
+                         time_split, to_other)
 
 
 def make_frame(rows):
@@ -76,3 +77,36 @@ def test_time_split_has_no_date_overlap_and_test_is_later():
     assert train["appointment_date"].max() < test["appointment_date"].min()
     assert len(train) + len(test) == len(df)
     assert test["appointment_date"].nunique() == 4   # 20% of 20 dates
+
+
+def test_rare_neighbourhoods_are_counted_on_training_rows_only():
+    # 20 days: dates 0-13 are train, 14-16 validation, 17-19 test (80% / 85% of 80%)
+    dates = pd.date_range("2016-05-01", periods=20)
+    rows = []
+    for i, d in enumerate(dates):
+        rows += [{"appointment_date": d, "neighbourhood": "Big", "no_show": 0}] * 5
+        if i < 3:
+            rows.append({"appointment_date": d, "neighbourhood": "TrainRare", "no_show": 0})
+    # Plenty of rows, but all in the test period: must still be grouped, because training never saw it
+    rows += [{"appointment_date": dates[19], "neighbourhood": "TestOnly", "no_show": 0}] * 60
+    df = pd.DataFrame(rows)
+    out = group_rare_neighbourhoods(df, min_rows=10)
+    assert set(out["neighbourhood"].astype(str)) == {"Big", OTHER}
+    assert out["neighbourhood"].dtype == "category"
+    assert (out.loc[df["neighbourhood"] == "TrainRare", "neighbourhood"] == OTHER).all()
+    assert len(out) == len(df)
+
+
+def test_threshold_is_inclusive_at_min_rows():
+    dates = pd.date_range("2016-05-01", periods=20)
+    df = pd.DataFrame({"appointment_date": np.repeat(dates, 5), "neighbourhood": "Big", "no_show": 0})
+    df.loc[df.index[:3], "neighbourhood"] = "Small"        # 3 rows, all in training
+    assert "Small" in group_rare_neighbourhoods(df, min_rows=3)["neighbourhood"].cat.categories
+    assert "Small" not in group_rare_neighbourhoods(df, min_rows=4)["neighbourhood"].cat.categories
+
+
+def test_prediction_time_mapping_sends_unknown_to_other():
+    cats = ["Jardim Camburi", OTHER]
+    assert to_other("Jardim Camburi", cats) == "Jardim Camburi"
+    assert to_other("Somewhere New", cats) == OTHER
+    assert to_other(None, cats) == OTHER

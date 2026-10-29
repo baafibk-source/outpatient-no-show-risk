@@ -1,4 +1,4 @@
 variant,roc_auc,high_share_welfare,high_share_non_welfare,observed_rate_in_high_band
-all features,0.7321,0.207,0.106,0.369
-drop welfare_programme,0.7316,0.152,0.106,0.372
-drop welfare + sex + disability + n_conditions,0.7322,0.161,0.112,0.363
+all features,0.7327,0.208,0.105,0.369
+drop welfare_programme,0.7322,0.164,0.109,0.371
+drop welfare + sex + disability + n_conditions,0.7326,0.162,0.113,0.367

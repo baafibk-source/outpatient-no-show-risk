@@ -6,14 +6,16 @@ Proof of concept on public data: Kaggle "Medical Appointment No Shows"
 Usage:
     python prep_noshow.py
 Outputs:
-    noshow_features.pkl  (cleaned, model-ready table)
+    noshow_features.parquet  (cleaned, model-ready table; categories and dates preserved)
 """
 
 import numpy as np
 import pandas as pd
 
 RAW_PATH = "KaggleV2-May-2016.csv"
-OUT_PATH = "noshow_features.pkl"
+OUT_PATH = "noshow_features.parquet"
+MIN_NEIGHBOURHOOD_ROWS = 50
+OTHER = "Other"
 
 
 # -----------------------------------------------------------------------------
@@ -162,7 +164,7 @@ def add_history_features(df: pd.DataFrame) -> pd.DataFrame:
 # -----------------------------------------------------------------------------
 # 4. TIME-BASED TRAIN/TEST SPLIT
 # -----------------------------------------------------------------------------
-def time_split(df: pd.DataFrame, test_frac: float = 0.2):
+def time_split(df: pd.DataFrame, test_frac: float = 0.2, verbose: bool = True):
     """
     Train on earlier appointment dates, test on later ones.
     This mirrors real use: a Trust would score FUTURE appointments
@@ -172,10 +174,36 @@ def time_split(df: pd.DataFrame, test_frac: float = 0.2):
     cutoff = dates[int(len(dates) * (1 - test_frac))]
     train = df[df["appointment_date"] < cutoff]
     test = df[df["appointment_date"] >= cutoff]
-    print(f"Split cutoff: {pd.Timestamp(cutoff).date()}")
-    print(f"Train: {len(train):,} rows, no-show rate {train['no_show'].mean():.1%}")
-    print(f"Test:  {len(test):,} rows, no-show rate {test['no_show'].mean():.1%}")
+    if verbose:
+        print(f"Split cutoff: {pd.Timestamp(cutoff).date()}")
+        print(f"Train: {len(train):,} rows, no-show rate {train['no_show'].mean():.1%}")
+        print(f"Test:  {len(test):,} rows, no-show rate {test['no_show'].mean():.1%}")
     return train, test
+
+
+def training_rows(df: pd.DataFrame) -> pd.DataFrame:
+    """The rows the model is fitted on: the first 85% of the first 80% of appointment dates.
+    Mirrors the two time_split calls in model_noshow.py (test, then validation)."""
+    train_full, _ = time_split(df, test_frac=0.2, verbose=False)
+    train, _ = time_split(train_full, test_frac=0.15, verbose=False)
+    return train
+
+
+def group_rare_neighbourhoods(df: pd.DataFrame, min_rows: int = MIN_NEIGHBOURHOOD_ROWS) -> pd.DataFrame:
+    """Map neighbourhoods with fewer than `min_rows` TRAINING rows to "Other", then make the column
+    categorical. Counting on training rows only means nothing is learned from validation or test;
+    applying the mapping to every row means train, test and the dashboard share one category list."""
+    counts = training_rows(df)["neighbourhood"].value_counts()
+    keep = set(counts[counts >= min_rows].index)
+    df = df.copy()
+    df["neighbourhood"] = df["neighbourhood"].where(df["neighbourhood"].isin(keep), OTHER).astype("category")
+    return df
+
+
+def to_other(name, categories):
+    """Prediction-time counterpart of group_rare_neighbourhoods: anything the model has not
+    seen as its own category (unknown or rare) is "Other"."""
+    return name if name in categories else OTHER
 
 
 FEATURES = [
@@ -200,7 +228,11 @@ if __name__ == "__main__":
     df = add_patient_features(df)
     df = add_history_features(df)
 
-    df["neighbourhood"] = df["neighbourhood"].astype("category")
+    n_before = df["neighbourhood"].nunique()
+    df = group_rare_neighbourhoods(df)
+    n_other = int((df["neighbourhood"] == OTHER).sum())
+    print(f"Neighbourhoods: {n_before} before grouping, {df['neighbourhood'].nunique()} categories after "
+          f"(rare ones, fewer than {MIN_NEIGHBOURHOOD_ROWS} training rows, now '{OTHER}': {n_other:,} rows)\n")
 
     # Quick sanity checks worth screenshotting for your README
     print("No-show rate by lead-time band:")
@@ -210,5 +242,5 @@ if __name__ == "__main__":
 
     train, test = time_split(df)
 
-    df.to_pickle(OUT_PATH)  # pickle keeps dtypes (categories, dates) intact
+    df.to_parquet(OUT_PATH, index=False)  # pyarrow keeps dtypes (categories, dates) intact
     print(f"\nSaved {len(df):,} rows and {len(FEATURES)} features to {OUT_PATH}")

@@ -20,7 +20,7 @@ from sklearn.metrics import roc_auc_score
 from prep_noshow import FEATURES, TARGET, time_split
 from model_noshow import SENSITIVE_FEATURES
 
-DATA_PATH, OUT_DIR, SEED = "noshow_features.pkl", "outputs", 42
+DATA_PATH, OUT_DIR, SEED = "noshow_features.parquet", "outputs", 42
 LOW_CUT, HIGH_CUT = 0.20, 0.35          # same risk bands as the dashboard
 GROUPS = ["sex", "age_band", "welfare_programme", "has_handicap"]
 
@@ -46,7 +46,7 @@ def fit_and_score(features, train, valid, test):
 
 def main():
     os.makedirs(OUT_DIR, exist_ok=True)
-    df = pd.read_pickle(DATA_PATH)
+    df = pd.read_parquet(DATA_PATH)
     train_full, test = time_split(df, 0.2)
     train, valid = time_split(train_full, 0.15)
 

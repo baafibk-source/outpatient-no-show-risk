@@ -40,7 +40,7 @@ import xgboost as xgb
 
 from prep_noshow import FEATURES, TARGET, time_split
 
-DATA_PATH = "noshow_features.pkl"
+DATA_PATH = "noshow_features.parquet"
 SEED = 42
 
 # Features that describe who the patient is rather than how the appointment was booked.
@@ -100,7 +100,7 @@ def main(drop_sensitive=False, skip_shap=False, out_dir="outputs"):
     # -------------------------------------------------------------------------
     # 1. DATA
     # -------------------------------------------------------------------------
-    df = pd.read_pickle(DATA_PATH)
+    df = pd.read_parquet(DATA_PATH)
     print("== Train vs test ==")
     train_full, test = time_split(df, test_frac=0.2)
 

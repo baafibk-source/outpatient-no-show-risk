@@ -42,7 +42,7 @@
     "neighbourhood"
   ],
   "dropped_sensitive_features": [],
-  "xgboost_best_iteration": 242,
+  "xgboost_best_iteration": 232,
   "test": {
     "Logistic Regression": {
       "roc_auc": 0.728,
@@ -53,27 +53,27 @@
       "noshows_captured_top20pct": 0.372
     },
     "XGBoost": {
-      "roc_auc": 0.732,
-      "pr_auc": 0.344,
-      "pr_auc_lift_vs_random": 1.865,
+      "roc_auc": 0.733,
+      "pr_auc": 0.345,
+      "pr_auc_lift_vs_random": 1.868,
       "brier": 0.136,
       "noshows_captured_top10pct": 0.206,
-      "noshows_captured_top20pct": 0.376
+      "noshows_captured_top20pct": 0.378
     }
   },
   "xgboost_test_ci": {
     "roc_auc_ci95": [
       0.725,
-      0.739
+      0.74
     ],
     "capture_top20_ci95": [
-      0.366,
-      0.387
+      0.365,
+      0.388
     ]
   },
   "ablations": {
     "xgboost_lead_time_only_roc_auc": 0.688,
-    "xgboost_without_history_features_roc_auc": 0.7221,
-    "xgboost_all_selected_features_roc_auc": 0.7321
+    "xgboost_without_history_features_roc_auc": 0.722,
+    "xgboost_all_selected_features_roc_auc": 0.7327
   }
 }
