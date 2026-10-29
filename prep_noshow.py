@@ -100,7 +100,7 @@ def profile_and_clean(df: pd.DataFrame) -> pd.DataFrame:
 # -----------------------------------------------------------------------------
 def add_time_features(df: pd.DataFrame) -> pd.DataFrame:
     df["same_day_booking"] = (df["lead_time_days"] == 0).astype(int)
-    df["appt_weekday"] = df["appointment_date"].dt.dayofweek      # 0 = Monday
+    df["appt_weekday"] = df["appointment_date"].dt.day_of_week      # 0 = Monday
     df["booked_hour"] = df["scheduled_ts"].dt.hour
 
     # Lead-time bands are easier to explain to clinical/operational teams
