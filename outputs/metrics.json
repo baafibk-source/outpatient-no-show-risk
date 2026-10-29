@@ -1,0 +1,79 @@
+{
+  "data": {
+    "rows_after_cleaning": 110516,
+    "patients": 62296,
+    "overall_no_show_rate": 0.2019,
+    "date_range": [
+      "2016-04-29",
+      "2016-06-08"
+    ]
+  },
+  "split": {
+    "train_rows": 67357,
+    "valid_rows": 16710,
+    "test_rows": 26449,
+    "train_end_exclusive": "2016-05-24",
+    "test_start": "2016-06-01",
+    "test_end": "2016-06-08",
+    "train_no_show_rate": 0.2109,
+    "valid_no_show_rate": 0.193,
+    "test_no_show_rate": 0.1846
+  },
+  "features": [
+    "lead_time_days",
+    "same_day_booking",
+    "appt_weekday",
+    "booked_hour",
+    "sms_received",
+    "age",
+    "is_male",
+    "welfare_programme",
+    "hypertension",
+    "diabetes",
+    "alcoholism",
+    "has_handicap",
+    "n_conditions",
+    "prior_appts",
+    "prior_no_shows",
+    "prior_no_show_rate",
+    "is_first_appt",
+    "days_since_last_appt",
+    "multiple_appts_same_day",
+    "neighbourhood"
+  ],
+  "dropped_sensitive_features": [],
+  "xgboost_best_iteration": 242,
+  "test": {
+    "Logistic Regression": {
+      "roc_auc": 0.728,
+      "pr_auc": 0.338,
+      "pr_auc_lift_vs_random": 1.829,
+      "brier": 0.138,
+      "noshows_captured_top10pct": 0.203,
+      "noshows_captured_top20pct": 0.372
+    },
+    "XGBoost": {
+      "roc_auc": 0.732,
+      "pr_auc": 0.344,
+      "pr_auc_lift_vs_random": 1.865,
+      "brier": 0.136,
+      "noshows_captured_top10pct": 0.206,
+      "noshows_captured_top20pct": 0.376
+    }
+  },
+  "xgboost_test_ci": {
+    "roc_auc_ci95": [
+      0.725,
+      0.739
+    ],
+    "capture_top20_ci95": [
+      0.366,
+      0.387
+    ]
+  },
+  "ablations": {
+    "xgboost_lead_time_only_roc_auc": 0.688,
+    "xgboost_without_history_features_roc_auc": 0.7221,
+    "xgboost_all_selected_features_roc_auc": 0.7321
+  }
+}

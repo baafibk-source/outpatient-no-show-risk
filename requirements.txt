@@ -1,0 +1,10 @@
+# Training, fairness check and tests were run with:
+#   pandas 3.0.5, numpy 2.5.3, scikit-learn 1.9.1, xgboost 3.4.1, shap 0.54.1, matplotlib 3.11.2, pytest 9.1.1
+# If your environment or Space uses different versions, adjust these to match.
+pandas>=3.0
+numpy>=2.0
+scikit-learn>=1.9
+xgboost>=3.0
+shap>=0.54
+matplotlib>=3.10
+pytest>=9.0
