@@ -568,6 +568,17 @@ legend + * { clear: both; }
 .prose #models-table { margin-bottom: 22px; }
 .note { margin-top: 10px; }
 
+/* Monitoring */
+.sim-banner { margin: 0 0 16px; padding: 10px 14px; border-radius: var(--r-m, 12px); background: var(--medium-soft); color: var(--medium); font-size: .9rem; }
+.alert-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+.alert-list li { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); font-size: .9rem; }
+.alert-list .when { color: var(--ink-2); font-size: .8rem; white-space: nowrap; }
+.all-clear { display: flex; gap: 10px; align-items: center; margin-top: 10px; color: var(--low); font-weight: 600; }
+.rules { margin-top: 12px; font-size: .84rem; color: var(--ink-2); }
+.data-table .psi-ok { color: var(--ink-2); }
+.data-table .psi-warning { color: var(--medium); font-weight: 600; }
+.data-table .psi-alert { color: var(--high); font-weight: 700; }
+
 /* SVG chart parts */
 .axis text, .tick-label { fill: var(--ink-2); font-size: 12px; font-family: var(--font); }
 .grid line { stroke: var(--line); }

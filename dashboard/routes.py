@@ -6,6 +6,8 @@ from typing import Optional
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Query, Request
 
+from monitoring.prediction_log import log_prediction
+
 from .config import ACTIONS, HIGH_CUT, LOW_CUT, WEEKDAYS
 from .data import capture_curve, lead_time_rates, repeat_summary
 from .llm import LIMIT_NOTE, chat_messages, fallback_reminder, fallback_summary, \
@@ -19,6 +21,21 @@ router = APIRouter()
 
 def S(request: Request) -> AppState:
     return request.app.state.dna
+
+
+@router.get("/health")
+def health(request: Request):
+    s = S(request)
+    return {"status": "ok", "model_version": s.model_version, "calibrated": s.calibration is not None,
+            "worklist": s.week is not None, "monitoring": s.week is not None and s.reference is not None,
+            "llm_enabled": s.llm.enabled}
+
+
+@router.get("/api/monitoring")
+def get_monitoring(request: Request):
+    s = S(request)
+    report = s.monitoring
+    return {**report, "model_version": s.model_version, "live": s.live.snapshot()}
 
 
 @router.get("/api/meta")
@@ -152,13 +169,16 @@ def get_appointment(appointment_id: int, request: Request):
     out.update({"id": appointment_id, "date": row["date"], "neighbourhood": row["neighbourhood"],
                 "attended": not bool(row["no_show"]), "appts_that_day": int(len(siblings)),
                 "missed_that_day": int(siblings["no_show"].sum())})
+    log_prediction(s.live, out["risk"], out["band"], s.model_version, "worklist")
     return out
 
 
 @router.post("/api/predict")
 def predict(a: AppointmentIn, request: Request):
     s = S(request)
-    return s.scorer.explain(s.scorer.row(a))
+    out = s.scorer.explain(s.scorer.row(a))
+    log_prediction(s.live, out["risk"], out["band"], s.model_version, "risk_check")
+    return out
 
 
 # --- LLM endpoints: the context is rebuilt on the server; template fallbacks need no token --------

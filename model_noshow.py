@@ -16,6 +16,7 @@ Outputs (in ./outputs):
     shap_beeswarm.png        - direction & spread of each feature's effect [unless --skip-shap]
     xgb_noshow.json          - saved XGBoost model used by the dashboard
     model_features.json      - feature list and neighbourhood categories used by the dashboard
+    reference_stats.json     - training-time snapshot of monitored features and scores (for drift checks)
 
 Calibration (Platt scaling) is fitted afterwards by calibrate_noshow.py.
 """
@@ -38,6 +39,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 import xgboost as xgb
 
+from monitoring.stats import build_reference
 from prep_noshow import FEATURES, TARGET, time_split
 
 DATA_PATH = "noshow_features.parquet"
@@ -265,7 +267,15 @@ def main(drop_sensitive=False, skip_shap=False, out_dir="outputs"):
     with open(f"{out_dir}/model_features.json", "w") as f:
         json.dump({"features": features,
                    "neighbourhood_categories": list(df["neighbourhood"].cat.categories)}, f)
-    print(f"\nSaved model, metrics and charts to ./{out_dir}/")
+    # Reference snapshot for drift monitoring: training-row feature shares and validation-period scores
+    reference = build_reference(
+        train, xgb_model.predict_proba(X_valid)[:, 1],
+        base_rates={"train": metrics["split"]["train_no_show_rate"], "valid": metrics["split"]["valid_no_show_rate"],
+                    "test": metrics["split"]["test_no_show_rate"]},
+        model_features=features)
+    with open(f"{out_dir}/reference_stats.json", "w") as f:
+        json.dump(reference, f)
+    print(f"\nSaved model, metrics, reference stats and charts to ./{out_dir}/")
 
 
 if __name__ == "__main__":

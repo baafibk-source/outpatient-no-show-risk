@@ -176,7 +176,7 @@ document.addEventListener("click", (e) => {
 // ---------------------------------------------------------------------------
 // Router + sliding tab indicator
 // ---------------------------------------------------------------------------
-const views = { worklist: initWorklist, check: initCheck, model: initModel };
+const views = { worklist: initWorklist, check: initCheck, model: initModel, monitoring: initMonitoring };
 const started = new Set();
 let currentView = null;
 function moveTabInk() {
@@ -957,6 +957,94 @@ function importanceChart(el, data, animate) {
     stacked ? null : s("line", { class: "axis-line", x1: f.m.l, x2: f.m.l, y1: f.m.t, y2: f.m.t + data.length * rowH }));
   fill(el, chartHead("What the model relies on", "Average impact on predictions (mean |SHAP|), top ten features."), svg,
     dataTable(["Feature", "Mean |SHAP|"], data.map((d) => [d.label, d.mean_abs_shap.toFixed(3)])));
+}
+
+// ---------------------------------------------------------------------------
+// Monitoring view (a replay of the held-out days, labelled as a simulation)
+// ---------------------------------------------------------------------------
+const STATUS = { ok: ["Low", "Stable"], warning: ["Medium", "Watch"], alert: ["High", "Alert"] };
+const statusPill = (st) => pill(STATUS[st][0], STATUS[st][1]);
+const sortedMetric = (v, d = 3) => (v == null ? "n/a" : v.toFixed(d));
+
+function rateChart(el, br, daily) {
+  const bars = [["Training", br.train], ["Validation", br.valid], ["Test (held out)", br.test]];
+  const f = frame(chartW(el), 240, { t: 24, r: 8, b: 40, l: 40 });
+  const max = 0.25, y = (v) => f.m.t + (1 - v / max) * f.ih, bw = f.iw / bars.length;
+  const svg = s("svg", { viewBox: `0 0 ${f.W} ${f.H}`, role: "img",
+    "aria-label": `No-show rate falls from ${pct(br.train, 1)} in training to ${pct(br.valid, 1)} in validation and ${pct(br.test, 1)} in the test period.` },
+    yGrid(f, [0, 0.05, 0.1, 0.15, 0.2, 0.25], y, (t) => pct(t)),
+    bars.map(([name, v], i) => {
+      const x0 = f.m.l + i * bw + bw * 0.22, w = bw * 0.56;
+      return [
+        tipLines(s("rect", { class: "series", x: x0, y: y(v), width: w, height: y(0) - y(v), rx: 5 }), [name, `${pct(v, 1)} no-show rate`]),
+        s("text", { class: "direct-label", x: x0 + w / 2, y: y(v) - 6, "text-anchor": "middle" }, pct(v, 1)),
+        s("text", { class: "tick-label", x: x0 + w / 2, y: f.H - f.m.b + 18, "text-anchor": "middle" }, name),
+      ];
+    }),
+    s("line", { class: "axis-line", x1: f.m.l, x2: f.W - f.m.r, y1: y(0), y2: y(0) }));
+  fill(el, chartHead("The no-show rate is drifting down", "Share of appointments missed, by period. A falling base rate is why the calibration may need refreshing over time."), svg,
+    dataTable(["Test day", "Observed", "Predicted"], daily.map((d) => [fmtDate(d.date), pct(d.observed_rate, 1), pct(d.mean_predicted, 1)])));
+}
+
+async function initMonitoring() {
+  fill($("#mon-kpis"), h("div", { class: "loading", style: { "grid-column": "1 / -1" } }, "Loading monitoring…"));
+  let m;
+  try {
+    m = await api("/api/monitoring");
+  } catch (err) {
+    fill($("#mon-kpis"), h("div", { class: "error-box", style: { "grid-column": "1 / -1" } }, `Couldn't load monitoring: ${err.message}`));
+    return;
+  }
+  const t = m.thresholds, weekly = m.performance.weekly, last = weekly[weekly.length - 1];
+  $("#sim-note").textContent = m.simulation_note;
+  const nAlerts = m.alerts.filter((a) => a.level === "alert").length;
+  const kpi = (value, text) => h("div", { class: "kpi" }, h("b", null, value), h("span", null, text));
+  fill($("#mon-kpis"),
+    kpi(String(nAlerts), "alerts raised while replaying the held-out days"),
+    kpi(sortedMetric(last.roc_auc), `ROC AUC, latest window (${fmtDate(last.start)} to ${fmtDate(last.end)}). Alert below ${t.auc_min.toFixed(2)}`),
+    kpi(sortedMetric(last.ece), `Calibration error (ECE), latest window. Alert above ${t.ece_max.toFixed(2)}`),
+    kpi(fmtInt(m.live.predictions), `predictions logged since the server started (model ${m.model_version})`));
+
+  // Alerts
+  fill($("#mon-alerts"), h("h2", null, "Alerts"),
+    m.alerts.length
+      ? h("ul", { class: "alert-list" }, m.alerts.map((a) => h("li", null, statusPill(a.level),
+        h("span", null, a.message), h("span", { class: "when" }, fmtDate(a.when)))))
+      : h("p", { class: "all-clear" }, "No alerts. Every check stayed inside its threshold across the replayed days."),
+    h("p", { class: "rules" }, `Rules: feature or score PSI above ${t.psi_alert} (watch above ${t.psi_warn}, judged once ${t.min_days_for_drift} or more appointment days have accumulated); ROC AUC below ${t.auc_min.toFixed(2)}; calibration error above ${t.ece_max.toFixed(2)}; no-show rate more than ${(t.base_rate_shift * 100).toFixed(0)} points from training.`));
+
+  // Drift table
+  const days = m.features[0].cumulative.map((d) => d.date);
+  // Colour only the windows long enough to judge; the first days are shown greyed as context
+  const psiCell = (c) => {
+    const v = c.psi, judged = c.days >= t.min_days_for_drift;
+    return h("td", { class: `num psi-${judged && v > t.psi_alert ? "alert" : judged && v > t.psi_warn ? "warning" : "ok"}` }, v.toFixed(3));
+  };
+  const row = (label, status, cum) => h("tr", null, h("td", null, label), h("td", null, statusPill(status)), cum.map(psiCell));
+  fill($("#mon-drift"),
+    h("h2", null, "Drift against the training data"),
+    h("p", { class: "sub" }, "Population Stability Index (PSI) of each feature and of the model's scores versus the training-time snapshot. Below 0.1 is stable, 0.1 to 0.2 is a moderate shift, above 0.2 is significant. Each column is cumulative: everything replayed up to that day."),
+    h("div", { class: "table-wrap" }, h("table", { class: "data-table" },
+      h("thead", null, h("tr", null, h("th", null, "Feature"), h("th", null, "Status"), days.map((d) => h("th", { class: "num" }, `to ${fmtDate(d)}`)))),
+      h("tbody", null, m.features.map((f) => row(f.label, f.status, f.cumulative)), row("Score distribution", m.score.status, m.score.cumulative)))),
+    h("p", { class: "small muted note" }, `The first days are noisy: lead time looks drifted after one or two days only because appointments on a given weekday are booked with different lead times (a single Tuesday scores 0.6 or more even inside the training data). That is why alerts are judged only once ${t.min_days_for_drift} or more appointment days are in. Score reference: ${m.score.basis}.`));
+
+  rateChart($("#mon-rate"), m.base_rate, m.performance.daily);
+
+  // Weekly performance
+  const wk = (w) => h("tr", null, h("td", null, `${fmtDate(w.start)} to ${fmtDate(w.end)}`), h("td", { class: "num" }, String(w.days)),
+    h("td", { class: "num" }, fmtInt(w.rows)),
+    h("td", { class: `num${w.roc_auc != null && w.roc_auc < t.auc_min ? " psi-alert" : ""}` }, sortedMetric(w.roc_auc)),
+    h("td", { class: `num${w.ece != null && w.ece > t.ece_max ? " psi-alert" : ""}` }, sortedMetric(w.ece)),
+    h("td", { class: "num" }, `${pct(w.observed_rate, 1)} / ${pct(w.mean_predicted, 1)}`));
+  fill($("#mon-perf"), h("h2", null, "Accuracy and calibration by week"),
+    h("p", { class: "sub" }, "Calendar weeks of the held-out period. Each has only three appointment days, so treat small movements as noise."),
+    h("table", { class: "data-table" },
+      h("thead", null, h("tr", null, h("th", null, "Window"), h("th", { class: "num" }, "Days"), h("th", { class: "num" }, "Rows"),
+        h("th", { class: "num" }, "ROC AUC"), h("th", { class: "num" }, "ECE"), h("th", { class: "num" }, "Observed / predicted"))),
+      h("tbody", null, weekly.map(wk))),
+    dataTable(["Day", "ROC AUC", "ECE", "Observed / predicted"], m.performance.daily.map((d) =>
+      [fmtDate(d.date), sortedMetric(d.roc_auc), sortedMetric(d.ece), `${pct(d.observed_rate, 1)} / ${pct(d.mean_predicted, 1)}`])));
 }
 
 // ---------------------------------------------------------------------------

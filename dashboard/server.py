@@ -29,6 +29,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from monitoring.prediction_log import setup as setup_prediction_log
+
 from .config import ENABLE_DOCS, STATIC
 from .routes import router
 from .state import AppState, load_state
@@ -42,6 +44,7 @@ def create_app(dirs: Optional[Sequence[Path]] = None, state: Optional[AppState] 
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
+        setup_prediction_log()
         app.state.dna = state if state is not None else load_state(dirs)
         yield
 

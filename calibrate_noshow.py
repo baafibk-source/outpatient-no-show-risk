@@ -42,6 +42,7 @@ from sklearn.isotonic import IsotonicRegression
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import brier_score_loss, roc_auc_score
 
+from monitoring.stats import ECE_BINS, ece
 from prep_noshow import TARGET, time_split
 
 DATA_PATH = "noshow_features.parquet"
@@ -68,16 +69,6 @@ def raw_scores(d):
 def logit(p):
     p = np.clip(p, 1e-6, 1 - 1e-6)
     return np.log(p / (1 - p))
-
-
-ECE_BINS = 10  # equal-count (quantile) bins; see the module docstring
-
-
-def ece(y, p, bins=ECE_BINS):
-    """Expected calibration error over equal-count risk bins."""
-    q = pd.qcut(p, bins, labels=False, duplicates="drop")
-    g = pd.DataFrame({"y": y, "p": p, "q": q}).groupby("q")
-    return float((g.size() / len(p) * (g["p"].mean() - g["y"].mean()).abs()).sum())
 
 
 def top_decile(y, p):

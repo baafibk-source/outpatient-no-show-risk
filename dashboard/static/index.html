@@ -30,6 +30,7 @@
       <a href="#/worklist" data-view="worklist">Worklist</a>
       <a href="#/check" data-view="check">Risk check</a>
       <a href="#/model" data-view="model">Model</a>
+      <a href="#/monitoring" data-view="monitoring">Monitoring</a>
     </nav>
     <div class="topbar-end">
       <span class="llm-status" id="llm-status" hidden></span>
@@ -219,6 +220,22 @@
             <li>Some patients have several bookings on one day, and each earlier day counts toward their history. This inflates "previous no-shows" for a few patients and pushes them to the top of the list.</li>
           </ul>
         </div>
+      </div>
+    </section>
+
+    <!-- Monitoring ---------------------------------------------------------->
+    <section class="view" id="view-monitoring" hidden>
+      <div class="page-head">
+        <h1>Is the model still behaving?</h1>
+        <p class="lede">Drift against the training data, weekly accuracy and calibration, and alerts when they cross a threshold.</p>
+      </div>
+      <p class="sim-banner" role="note"><strong>Simulation.</strong> <span id="sim-note">Replays the held-out days one at a time. No live traffic.</span></p>
+      <div class="kpis" id="mon-kpis"></div>
+      <div class="charts">
+        <div class="card chart-card wide" id="mon-alerts"></div>
+        <div class="card chart-card wide" id="mon-drift"></div>
+        <figure class="card chart-card" id="mon-rate"></figure>
+        <div class="card chart-card" id="mon-perf"></div>
       </div>
     </section>
   </main>
