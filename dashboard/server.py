@@ -11,7 +11,7 @@ Then open http://127.0.0.1:8000
 Files needed (looked up in ./, ./outputs, ../outputs):
     xgb_noshow.json, model_features.json, model_comparison.csv
     calibration.json     (from calibrate_noshow.py - without it raw scores are shown)
-    noshow_features.pkl  (optional - powers the worklist and overview)
+    noshow_features.parquet  (optional - powers the worklist and overview)
 """
 
 import json
@@ -202,10 +202,10 @@ def explain(X: pd.DataFrame):
 # Held-out final week: scored once at startup, powers overview + worklist
 # -----------------------------------------------------------------------------
 def load_test_week():
-    path = find("noshow_features.pkl")
+    path = find("noshow_features.parquet")
     if path is None:
         return None, None
-    df = pd.read_pickle(path)
+    df = pd.read_parquet(path)
     dates = np.sort(df["appointment_date"].unique())
     cutoff = dates[int(len(dates) * 0.8)]  # same split as prep_noshow.time_split
     test = df[df["appointment_date"] >= cutoff].copy()
@@ -479,7 +479,7 @@ DEFAULT_HOOD = "Jardim Camburi" if "Jardim Camburi" in NEIGHBOURHOODS else NEIGH
 
 def need_test_week():
     if TEST is None:
-        raise HTTPException(503, "noshow_features.pkl not found. Run prep_noshow.py to enable the worklist.")
+        raise HTTPException(503, "noshow_features.parquet not found. Run prep_noshow.py to enable the worklist.")
 
 
 @app.get("/api/meta")

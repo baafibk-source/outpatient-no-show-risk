@@ -10,7 +10,7 @@ Proof of concept on public Kaggle data (Brazil, 2016). Not NHS data and not for 
 
 ## Run
 
-From the project root (the folder containing `outputs/` and `noshow_features.pkl`):
+From the project root (the folder containing `outputs/` and `noshow_features.parquet`):
 
 ```bash
 pip install -r dashboard/requirements.txt
@@ -21,7 +21,7 @@ Open http://127.0.0.1:8000.
 
 - `outputs/xgb_noshow.json` and `outputs/model_features.json` are required.
 - `outputs/calibration.json` makes the scores read as probabilities. Create it with `python calibrate_noshow.py`, which fits Platt scaling on the week before the held-out week. Without it, the dashboard shows raw model scores.
-- `noshow_features.pkl` powers the Worklist and Model views. Create it with `python prep_noshow.py`. Without it, only Risk check works.
+- `noshow_features.parquet` powers the Worklist and Model views. Create it with `python prep_noshow.py`. Without it, only Risk check works.
 - To turn on the AI assistant (staff summaries, reminders, Q&A), set `HF_TOKEN` (and optionally `LLM_MODEL`) before starting. Without a token, the dashboard falls back to template text.
 
 ## Structure
