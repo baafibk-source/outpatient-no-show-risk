@@ -1,0 +1,3 @@
+model,roc_auc,pr_auc,pr_auc_lift_vs_random,brier,noshows_captured_top10pct,noshows_captured_top20pct
+Logistic Regression,0.728,0.338,1.829,0.138,0.203,0.372
+XGBoost,0.732,0.344,1.865,0.136,0.206,0.376

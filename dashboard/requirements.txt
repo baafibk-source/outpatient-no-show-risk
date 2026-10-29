@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+xgboost
+shap
+pandas
+numpy
+scikit-learn
+huggingface_hub

@@ -1,0 +1,20 @@
+# data and large artefacts
+KaggleV2-May-2016.csv
+*.pkl
+
+# python / OS / tooling
+__pycache__/
+.DS_Store
+.claude/
+.impeccable/
+
+# unrelated or nested folders
+brag-output*/
+files/
+fix-backup-2026-10-11/
+DNA PROJECT-backup*/
+dna-space/
+dna-risk-dashboard/
+
+# staging area for files to merge in (removed once merged)
+incoming/

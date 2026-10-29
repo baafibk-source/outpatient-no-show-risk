@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>DNA Risk Dashboard</title>
+  <meta name="description" content="Outpatient Did-Not-Attend risk worklist, risk check and model performance. Proof of concept on public data.">
+  <meta name="color-scheme" content="light dark">
+  <!-- Applies the saved theme before first paint (external file: the CSP blocks inline scripts) -->
+  <script src="/static/theme.js"></script>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+        <rect x="3.5" y="6.5" width="25" height="22" rx="5" fill="none" stroke="currentColor" stroke-width="2"/>
+        <path d="M3.5 12.5h25M10.5 3.5v5M21.5 3.5v5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <path d="M12 17.5l8 6M20 17.5l-8 6" stroke="var(--high-fill)" stroke-width="2.4" stroke-linecap="round"/>
+      </svg>
+      <div>
+        <div class="brand-name">DNA Risk</div>
+        <div class="brand-sub">Outpatient no-show prediction</div>
+      </div>
+    </div>
+    <nav class="tabs" aria-label="Views">
+      <span class="tab-ink" aria-hidden="true"></span>
+      <a href="#/worklist" data-view="worklist">Worklist</a>
+      <a href="#/check" data-view="check">Risk check</a>
+      <a href="#/model" data-view="model">Model</a>
+    </nav>
+    <div class="topbar-end">
+      <span class="llm-status" id="llm-status" hidden></span>
+      <div class="theme-switch" id="theme-switch" role="radiogroup" aria-label="Colour theme">
+        <button type="button" role="radio" data-theme-choice="light" aria-checked="false" title="Light theme">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10 2.2v2M10 15.8v2M2.2 10h2M15.8 10h2M4.5 4.5l1.4 1.4M14.1 14.1l1.4 1.4M4.5 15.5l1.4-1.4M14.1 5.9l1.4-1.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          <span>Light</span>
+        </button>
+        <button type="button" role="radio" data-theme-choice="dark" aria-checked="false" title="Dark theme">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16.5 12.3A6.8 6.8 0 0 1 7.7 3.5a6.8 6.8 0 1 0 8.8 8.8z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+          <span>Dark</span>
+        </button>
+        <button type="button" role="radio" data-theme-choice="auto" aria-checked="false" title="Follow system setting">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10 3a7 7 0 0 1 0 14z" fill="currentColor"/></svg>
+          <span>Auto</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="notice" role="note">
+    <svg class="notice-icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 9v5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="10" cy="6.2" r="1.1" fill="currentColor"/></svg>
+    <p><strong>Proof of concept.</strong> Trained on public appointment data from Brazil (2016), not NHS data, and not for
+    clinical or operational use. Scores should guide extra support for patients, never penalise them.</p>
+  </div>
+
+  <main id="main">
+    <!-- Worklist ------------------------------------------------------------>
+    <section class="view" id="view-worklist" hidden>
+      <h1 class="sr-only">Appointment worklist</h1>
+      <div class="week" id="week" aria-label="Held-out week"></div>
+
+      <div class="worklist-grid">
+        <div class="worklist-main">
+          <div class="filters" role="group" aria-label="Filter appointments">
+            <label class="field">
+              <span>Clinic neighbourhood</span>
+              <select id="f-hood"><option value="">All neighbourhoods</option></select>
+            </label>
+            <div class="field">
+              <span id="band-label">Risk band</span>
+              <div class="seg" id="f-band" role="radiogroup" aria-labelledby="band-label">
+                <button type="button" role="radio" data-band="" aria-checked="true">All</button>
+                <button type="button" role="radio" data-band="High" aria-checked="false"><i class="mark high" aria-hidden="true"></i>High</button>
+                <button type="button" role="radio" data-band="Medium" aria-checked="false"><i class="mark medium" aria-hidden="true"></i>Medium</button>
+                <button type="button" role="radio" data-band="Low" aria-checked="false"><i class="mark low" aria-hidden="true"></i>Low</button>
+              </div>
+            </div>
+            <div class="toggles">
+              <label class="switch">
+                <input type="checkbox" id="f-group" checked>
+                <span class="switch-track" aria-hidden="true"></span>
+                <span>Group repeat bookings</span>
+              </label>
+              <label class="switch">
+                <input type="checkbox" id="f-outcome">
+                <span class="switch-track" aria-hidden="true"></span>
+                <span>Show what happened</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="card list-card">
+            <div class="list-head">
+              <h2 id="list-title">Appointments</h2>
+              <p class="muted" id="list-sub"></p>
+            </div>
+            <div class="curve" id="curve" aria-hidden="true"></div>
+            <p class="repeat-note" id="repeat-note" role="note" hidden></p>
+            <div class="table-wrap">
+              <table class="appts" id="appts">
+                <thead>
+                  <tr>
+                    <th scope="col">Risk</th>
+                    <th scope="col">Appointment</th>
+                    <th scope="col" class="num hide-sm">Age</th>
+                    <th scope="col" class="num">Booked ahead</th>
+                    <th scope="col" class="num">Missed before</th>
+                    <th scope="col" class="hide-sm hide-md">SMS</th>
+                    <th scope="col" class="outcome-col">Outcome</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <div class="table-foot">
+              <span class="muted" id="page-info"></span>
+              <button class="btn quiet" id="load-more" type="button" hidden>Show 50 more</button>
+            </div>
+          </div>
+        </div>
+
+        <aside class="detail" id="detail" aria-live="polite" aria-label="Appointment details">
+          <div class="empty">
+            <svg viewBox="0 0 48 48" aria-hidden="true"><rect x="7" y="10" width="34" height="30" rx="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 18h34M16 6v7M32 6v7M16 27h16M16 33h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <h2>Pick an appointment</h2>
+            <p>Select a row to see why it scored that way, the suggested contact, and draft a reminder.</p>
+          </div>
+        </aside>
+      </div>
+      <div class="scrim" id="scrim" hidden></div>
+    </section>
+
+    <!-- Risk check ---------------------------------------------------------->
+    <section class="view" id="view-check" hidden>
+      <div class="page-head">
+        <h1>Check a single appointment</h1>
+        <p class="lede">Enter appointment details to score them. Demo inputs only: never enter real patient data.</p>
+      </div>
+      <div class="examples" id="examples" role="group" aria-label="Example appointments"></div>
+
+      <div class="check-grid">
+        <form id="check-form" class="card check-form" autocomplete="off">
+          <fieldset>
+            <legend>Appointment</legend>
+            <label class="field range">
+              <span>Days between booking and appointment <output id="o-lead">14</output></span>
+              <input type="range" name="lead_time_days" min="0" max="120" value="14">
+            </label>
+            <div class="row2">
+              <label class="field"><span>Appointment day</span><select name="weekday"></select></label>
+              <label class="field range">
+                <span>Hour booking was made <output id="o-hour">10:00</output></span>
+                <input type="range" name="booked_hour" min="6" max="21" value="10">
+              </label>
+            </div>
+            <label class="field"><span>Clinic neighbourhood</span><select name="neighbourhood"></select></label>
+            <div class="row2 checks">
+              <label class="check"><input type="checkbox" name="sms_received" checked> SMS reminder sent</label>
+              <label class="check"><input type="checkbox" name="multiple_appts_same_day"> Several appointments that day</label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Patient</legend>
+            <div class="row2">
+              <label class="field range">
+                <span>Age <output id="o-age">35</output></span>
+                <input type="range" name="age" min="0" max="100" value="35">
+              </label>
+              <div class="field">
+                <span id="sex-label">Sex</span>
+                <div class="seg small" role="radiogroup" aria-labelledby="sex-label">
+                  <label><input type="radio" name="sex" value="Female" checked><span>Female</span></label>
+                  <label><input type="radio" name="sex" value="Male"><span>Male</span></label>
+                </div>
+              </div>
+            </div>
+            <div class="field">
+              <span id="cond-label">Recorded conditions</span>
+              <div class="chips" role="group" aria-labelledby="cond-label">
+                <label><input type="checkbox" name="conditions" value="Hypertension"><span>Hypertension</span></label>
+                <label><input type="checkbox" name="conditions" value="Diabetes"><span>Diabetes</span></label>
+                <label><input type="checkbox" name="conditions" value="Alcoholism"><span>Alcoholism</span></label>
+                <label><input type="checkbox" name="conditions" value="Disability"><span>Disability</span></label>
+              </div>
+            </div>
+            <label class="check"><input type="checkbox" name="welfare_programme"> Enrolled in welfare programme</label>
+          </fieldset>
+
+          <fieldset>
+            <legend>Attendance history</legend>
+            <div class="row3">
+              <label class="field"><span>Previous appointments</span><input type="number" name="prior_appts" min="0" max="500" value="0" inputmode="numeric"></label>
+              <label class="field"><span>Previous no-shows</span><input type="number" name="prior_no_shows" min="0" max="500" value="0" inputmode="numeric"></label>
+              <label class="field"><span>Days since last visit</span><input type="number" name="days_since_last_appt" min="0" max="3650" value="0" inputmode="numeric"></label>
+            </div>
+          </fieldset>
+          <p class="muted small form-note">The score updates as you change any field.</p>
+        </form>
+
+        <div class="card check-result" id="check-result" aria-live="polite"></div>
+        <button class="check-peek" id="check-peek" type="button" hidden></button>
+      </div>
+    </section>
+
+    <!-- Model --------------------------------------------------------------->
+    <section class="view" id="view-model" hidden>
+      <div class="page-head">
+        <h1>How well does it work?</h1>
+        <p class="lede" id="model-lede">Tested on the final week of appointments, which the model never saw during training.</p>
+      </div>
+      <div class="kpis" id="kpis"></div>
+      <div class="charts">
+        <figure class="card chart-card wide" id="c-capture"></figure>
+        <figure class="card chart-card" id="c-lead"></figure>
+        <figure class="card chart-card" id="c-calib"></figure>
+        <figure class="card chart-card" id="c-importance"></figure>
+        <div class="card chart-card prose">
+          <h2>Model comparison</h2>
+          <div id="models-table"></div>
+          <h2>Limitations</h2>
+          <ul>
+            <li>About six weeks of data, so attendance history is short. Years of NHS records would likely make history features much stronger.</li>
+            <li>SMS reminders were mostly sent for appointments booked further ahead, so their effect is mixed up with lead time. Measuring reminder impact needs a controlled trial.</li>
+            <li>Neighbourhood likely reflects deprivation or travel distance. Use scores to offer support such as reminders or transport help, never to overbook or penalise.</li>
+            <li>Calibration brings the average in line, but the riskiest tenth still runs a few points above what happened. Treat the very top scores as a ranking more than an exact chance.</li>
+            <li>Some patients have several bookings on one day, and each earlier day counts toward their history. This inflates "previous no-shows" for a few patients and pushes them to the top of the list.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    Built by Kwame Baafi Boateng. XGBoost, SHAP and FastAPI. Data: Kaggle Medical Appointment No Shows (Joni Hoppen and Aquarela Analytics).
+  </footer>
+
+  <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
+  <script type="module" src="/static/app.js"></script>
+</body>
+</html>
