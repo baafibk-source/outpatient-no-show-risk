@@ -247,17 +247,12 @@ function explainNodes(res, { animate = true } = {}) {
   ];
 }
 
-function contextOf(res) {
-  return {
-    risk: res.risk, band: res.band, action: res.action,
-    factors: res.factors.slice(0, 8).map(({ label, value, shap }) => ({ label, value, shap })),
-  };
-}
-
 const SUGGESTIONS = ["Why is the risk at this level?", "What would lower the risk?", "How reliable is this model?"];
 
-function mountAI(el, res) {
-  const ctx = contextOf(res);
+// `ref` says which prediction the assistant is about: { appointment_id } for a worklist row, or
+// { appointment } with the Risk check inputs. The server rebuilds the score and factors itself.
+function mountAI(el, ref) {
+  const ctx = ref;
   const llm = state.meta?.llm_enabled;
   const history = [];
   const kinds = [["summary", "Write staff summary"], ["sms", "Draft SMS"], ["call", "Draft call script"]];
@@ -492,7 +487,7 @@ function rowNode(r) {
     h("td", { class: "num hide-sm" }, String(r.age)),
     h("td", { class: "num", "data-label": "Booked" }, r.lead_time_days === 0 ? "Same day" : `${r.lead_time_days} d`),
     h("td", { class: "num", "data-label": r.prior_appts ? "Missed" : null },
-      r.prior_appts ? `${r.prior_no_shows} of ${r.prior_appts}` : h("span", { class: "muted" }, "First visit")),
+      r.prior_appts ? `${r.prior_no_shows} of ${r.prior_appts}` : h("span", { class: "muted" }, "No earlier visit")),
     h("td", { class: "hide-sm hide-md" }, r.sms_received ? "Sent" : h("span", { class: "muted" }, "No")),
     h("td", { class: "outcome-col" }, r.attended ? h("span", { class: "outcome ok" }, "Attended") : h("span", { class: "outcome dna" }, "Did not attend")));
 }
@@ -618,7 +613,7 @@ async function loadDetail(id, animate = true) {
     h("div", { class: "explain" }, explainNodes(res, { animate })),
     ai);
   el.scrollTop = 0;
-  mountAI(ai, res);
+  mountAI(ai, { appointment_id: id });
 }
 
 // ---------------------------------------------------------------------------
@@ -737,7 +732,7 @@ async function runCheck() {
   fill(el, h("h2", { class: "sr-only" }, "Score for this appointment"),
     h("div", { class: "explain" }, explainNodes(res, { animate: !checkShown }), warn), ai);
   checkShown = true;
-  mountAI(ai, res);
+  mountAI(ai, { appointment: body });
 }
 
 // ---------------------------------------------------------------------------
