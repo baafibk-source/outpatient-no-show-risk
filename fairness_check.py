@@ -7,7 +7,9 @@ Two questions:
      (welfare_programme, is_male, has_handicap, n_conditions)?
 
 Run after prep_noshow.py:   python fairness_check.py
-Writes outputs/fairness_by_group.csv and outputs/fairness_ablation.csv
+Writes outputs/fairness_ablation.csv and outputs/fairness_by_group.csv. The group breakdown is
+produced for both the full-feature model and the reduced model that the dashboard ships
+(column "model").
 """
 import os
 
@@ -73,29 +75,31 @@ def main():
     ablation.to_csv(f"{OUT_DIR}/fairness_ablation.csv", index=False)
     print("\n== Ablation ==\n", ablation.to_string(index=False))
 
-    # ---- group breakdown for the full model
-    raw, cal = scored["all features"]
-    t = test.assign(raw=raw, risk=cal)
-    t["band"] = pd.cut(np.floor(t["risk"] * 100 + 0.5), [-1, LOW_CUT * 100, HIGH_CUT * 100, 101],
-                       right=False, labels=["Low", "Medium", "High"])
-    t["sex"] = np.where(t["is_male"] == 1, "Male", "Female")
-    t["age_band"] = pd.cut(t["age"], [-1, 12, 17, 29, 44, 64, 120],
-                           labels=["0-12", "13-17", "18-29", "30-44", "45-64", "65+"])
+    # ---- group breakdown, for the full model and for the reduced model that ships
+    reduced = "drop welfare + sex + disability + n_conditions"
     out = []
-    for col in GROUPS:
-        for key, g in t.groupby(col, observed=True):
-            if len(g) < 100:
-                continue
-            out.append({
-                "attribute": col, "group": str(key), "n": len(g),
-                "observed_rate": round(g[TARGET].mean(), 3),
-                "mean_predicted": round(float(g["risk"].mean()), 3),
-                "roc_auc": round(roc_auc_score(g[TARGET], g["raw"]), 3) if g[TARGET].nunique() > 1 else np.nan,
-                "share_high": round(float((g["band"] == "High").mean()), 3),
-            })
+    for model_name, key in [("all features", "all features"), ("reduced (shipped)", reduced)]:
+        raw, cal = scored[key]
+        t = test.assign(raw=raw, risk=cal)
+        t["band"] = pd.cut(np.floor(t["risk"] * 100 + 0.5), [-1, LOW_CUT * 100, HIGH_CUT * 100, 101],
+                           right=False, labels=["Low", "Medium", "High"])
+        t["sex"] = np.where(t["is_male"] == 1, "Male", "Female")
+        t["age_band"] = pd.cut(t["age"], [-1, 12, 17, 29, 44, 64, 120],
+                               labels=["0-12", "13-17", "18-29", "30-44", "45-64", "65+"])
+        for col in GROUPS:
+            for grp, g in t.groupby(col, observed=True):
+                if len(g) < 100:
+                    continue
+                out.append({
+                    "model": model_name, "attribute": col, "group": str(grp), "n": len(g),
+                    "observed_rate": round(g[TARGET].mean(), 3),
+                    "mean_predicted": round(float(g["risk"].mean()), 3),
+                    "roc_auc": round(roc_auc_score(g[TARGET], g["raw"]), 3) if g[TARGET].nunique() > 1 else np.nan,
+                    "share_high": round(float((g["band"] == "High").mean()), 3),
+                })
     by_group = pd.DataFrame(out)
     by_group.to_csv(f"{OUT_DIR}/fairness_by_group.csv", index=False)
-    print("\n== By group (full model) ==\n", by_group.to_string(index=False))
+    print("\n== By group ==\n", by_group.to_string(index=False))
 
 
 if __name__ == "__main__":
