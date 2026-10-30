@@ -12,6 +12,7 @@ from .config import ACTIONS, HIGH_CUT, LOW_CUT, WEEKDAYS
 from .data import capture_curve, lead_time_rates, repeat_summary
 from .llm import LIMIT_NOTE, chat_messages, fallback_reminder, fallback_summary, \
     reminder_messages, summary_messages
+from .model import action_for
 from .schemas import AppointmentIn, Band, ChatIn, ContextIn, ReminderIn
 from .state import AppState
 
@@ -52,6 +53,7 @@ def get_meta(request: Request):
         "llm_model": s.llm.model if s.llm.enabled else None,
         "has_worklist": s.week is not None,
         "calibrated": s.calibration is not None,
+        "model_version": s.model_version,
     }
 
 
@@ -108,6 +110,10 @@ def get_overview(request: Request):
         "repeats": repeat_summary(t),
         "importance": s.importance[:10],
         "models": s.comparison,
+        # Headline test-set figures, straight from outputs/metrics.json
+        "test_metrics": {"xgboost": s.metrics.get("test", {}).get("XGBoost"),
+                         "ci": s.metrics.get("xgboost_test_ci"),
+                         "ablations": s.metrics.get("ablations")},
     }
 
 
@@ -144,6 +150,7 @@ def list_appointments(request: Request,
         "band": r.band,
         "attended": not bool(r.no_show),
         "appts_that_day": int(r.appts_that_day),
+        "action": action_for(r.band, r.lead_time_days),
     } for r in page.itertuples()]
     return {
         "total": int(len(t)),

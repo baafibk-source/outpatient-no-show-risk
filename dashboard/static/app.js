@@ -53,10 +53,29 @@ const ICON = {
     s("path", { d: "M6.2 3.2l2 3.1-1.4 1.5a10 10 0 0 0 5.4 5.4l1.5-1.4 3.1 2-.8 2.4c-.2.6-.8 1-1.4.9C8.8 16.5 3.5 11.2 2.9 5.4c-.1-.6.3-1.2.9-1.4z", fill: "none", stroke: "currentColor", "stroke-width": "1.6", "stroke-linejoin": "round" })),
   spark: () => s("svg", { viewBox: "0 0 20 20", "aria-hidden": "true" },
     s("path", { d: "M10 2.5l1.6 4.6 4.6 1.6-4.6 1.6L10 15l-1.6-4.7L3.8 8.7l4.6-1.6z", fill: "none", stroke: "currentColor", "stroke-width": "1.5", "stroke-linejoin": "round" })),
+  alert: () => s("svg", { viewBox: "0 0 20 20", "aria-hidden": "true" },
+    s("path", { d: "M10 3l7.5 13h-15z", fill: "none", stroke: "currentColor", "stroke-width": "1.5", "stroke-linejoin": "round" }),
+    s("path", { d: "M10 8v3.5", stroke: "currentColor", "stroke-width": "1.5", "stroke-linecap": "round" }), s("circle", { cx: 10, cy: 13.8, r: .9, fill: "currentColor" })),
+  calendarX: () => s("svg", { viewBox: "0 0 20 20", "aria-hidden": "true" },
+    s("rect", { x: 3, y: 4.5, width: 14, height: 12.5, rx: 3, fill: "none", stroke: "currentColor", "stroke-width": "1.5" }),
+    s("path", { d: "M3 8.5h14M7 2.5v3M13 2.5v3M8 11l4 3.5M12 11l-4 3.5", stroke: "currentColor", "stroke-width": "1.5", "stroke-linecap": "round" })),
+  target: () => s("svg", { viewBox: "0 0 20 20", "aria-hidden": "true" },
+    s("circle", { cx: 10, cy: 10, r: 7, fill: "none", stroke: "currentColor", "stroke-width": "1.5" }),
+    s("circle", { cx: 10, cy: 10, r: 3.5, fill: "none", stroke: "currentColor", "stroke-width": "1.5" }), s("circle", { cx: 10, cy: 10, r: 1, fill: "currentColor" })),
+  curve: () => s("svg", { viewBox: "0 0 20 20", "aria-hidden": "true" },
+    s("path", { d: "M3 17V3M3 17h14", stroke: "currentColor", "stroke-width": "1.5", "stroke-linecap": "round" }),
+    s("path", { d: "M3 17C5 9 9 5.5 17 4", fill: "none", stroke: "currentColor", "stroke-width": "1.5", "stroke-linecap": "round" })),
+  pulse: () => s("svg", { viewBox: "0 0 20 20", "aria-hidden": "true" },
+    s("path", { d: "M2 10h3.5l2-5 3 10 2-5H18", fill: "none", stroke: "currentColor", "stroke-width": "1.5", "stroke-linecap": "round", "stroke-linejoin": "round" })),
 };
 const bandMark = (band) => h("i", { class: `mark ${String(band).toLowerCase()}`, "aria-hidden": "true" });
 const pill = (band, text = `${band} risk`) => h("span", { class: `pill ${band}` }, bandMark(band), text);
 const bandFill = (b) => `var(--${String(b).toLowerCase()}-fill)`;
+// Summary figure card: tinted icon and label, large light number, one line of context
+const kpi = ({ icon, tone = "", label, value, note }) => h("div", { class: "kpi" },
+  h("div", { class: "kpi-top" }, h("span", { class: `kpi-icon ${tone}` }, icon()), label),
+  h("b", null, value),
+  note ? h("span", null, note) : null);
 
 // Count-up for headline numbers. The visible digits are aria-hidden while they move;
 // screen readers get the final value straight away.
@@ -94,7 +113,7 @@ async function api(path, body) {
 const state = {
   meta: null,
   overview: null,
-  wl: { date: null, hood: "", band: "", offset: 0, rows: [], total: 0, selected: null, showOutcome: false, group: true },
+  wl: { date: null, scope: "day", hood: "", band: "", offset: 0, rows: [], total: 0, selected: null, selectedFrom: "row", showOutcome: false, group: true },
   checkSeq: 0,
 };
 const PAGE = 50;
@@ -177,15 +196,10 @@ document.addEventListener("click", (e) => {
 // Router + sliding tab indicator
 // ---------------------------------------------------------------------------
 const views = { worklist: initWorklist, check: initCheck, model: initModel, monitoring: initMonitoring };
+const TITLES = { worklist: "Worklist", check: "Risk check", model: "Model", monitoring: "Monitoring" };
 const started = new Set();
 let currentView = null;
-function moveTabInk() {
-  const a = $(".tabs a[aria-current='page']"), ink = $(".tab-ink");
-  if (!a || !ink) return;
-  ink.style.width = `${a.offsetWidth}px`;  // width snaps; only the position animates
-  ink.style.transform = `translateX(${a.offsetLeft}px)`;
-  requestAnimationFrame(() => ink.classList.add("ready"));
-}
+let worklistReady = null;
 function route() {
   const name = (location.hash.replace("#/", "") || "worklist").split("?")[0];
   const view = views[name] ? name : "worklist";
@@ -197,10 +211,15 @@ function route() {
       scrollTo({ top: 0 });
     }
   });
-  $$(".tabs a").forEach((a) => { if (a.dataset.view === view) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
-  moveTabInk();
+  $$(".nav a").forEach((a) => { if (a.dataset.view === view) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+  $("#page-title").textContent = TITLES[view];
+  document.title = `${TITLES[view]} · DNA Risk Dashboard`;
   currentView = view;
-  if (!started.has(view)) { started.add(view); views[view](); }
+  if (!started.has(view)) {
+    started.add(view);
+    const ready = views[view]();
+    if (view === "worklist") worklistReady = ready;
+  }
   else if (view === "model" && state.overview) renderModelCharts(false);
   hideTip();
 }
@@ -340,79 +359,129 @@ async function initWorklist() {
   const hoodSel = $("#f-hood");
   add(hoodSel, state.meta.neighbourhoods.map((n) => h("option", null, n)));
   hoodSel.addEventListener("change", () => { wl.hood = hoodSel.value; loadList(true); });
-  const bands = $$("#f-band button");
-  const pickBand = (b) => {
-    bands.forEach((x) => { x.setAttribute("aria-checked", String(x === b)); x.tabIndex = x === b ? 0 : -1; });
-    wl.band = b.dataset.band; loadList(true);
-  };
-  bands.forEach((b, i) => {
-    b.tabIndex = i === 0 ? 0 : -1;
-    b.addEventListener("click", () => pickBand(b));
-    b.addEventListener("keydown", (e) => {
-      const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
-      if (!step) return;
-      e.preventDefault();
-      const next = bands[(i + step + bands.length) % bands.length];
-      next.focus();
-      pickBand(next);
-    });
-  });
+  radioGroup($$("#f-band button"), (b) => { wl.band = b.dataset.band; loadList(true); });
+  radioGroup($$("#f-scope button"), (b) => setScope(b.dataset.scope, wl.date));
   $("#f-outcome").addEventListener("change", (e) => {
     wl.showOutcome = e.target.checked;
     $("#appts").classList.toggle("show-outcome", wl.showOutcome);
-    renderWeek(false);
+    renderWeek();
     if (wl.selected) loadDetail(wl.selected, false);
   });
   $("#f-group").addEventListener("change", (e) => { wl.group = e.target.checked; loadList(true); });
   $("#load-more").addEventListener("click", () => loadList(false));
   $("#scrim").addEventListener("click", closeDetail);
-  fill($("#week"), h("div", { class: "loading", style: { "grid-column": "1 / -1" } }, "Scoring the held-out week…"));
+  fill($("#wl-kpis"), h("div", { class: "loading", style: { "grid-column": "1 / -1" } }, "Scoring the held-out week…"));
 
   try {
     state.overview ??= await api("/api/overview");
   } catch (err) {
-    fill($("#week"), h("div", { class: "error-box", style: { "grid-column": "1 / -1" } }, `Couldn't load the week: ${err.message}`));
+    fill($("#wl-kpis"), h("div", { class: "error-box", style: { "grid-column": "1 / -1" } }, `Couldn't load the week: ${err.message}`));
     return;
   }
-  wl.date = state.overview.per_day[0].date;
-  renderWeek(true);
-  loadList(true);
+  const o = state.overview;
+  wl.date = o.per_day[0].date;
+  $("#days-sub").textContent = `${fmtDate(o.window.start, { day: "numeric", month: "long" })} to ${fmtDate(o.window.end, { day: "numeric", month: "long", year: "numeric" })}, ${o.per_day.length} clinic days the model never saw in training.`;
+  renderWlKpis(true);
+  renderWlCapture(true);
+  renderWeek();
+  await loadList(true);
 }
 
-function renderWeek(animate) {
+// Radio-style segmented control: click or arrow keys move the selection
+function radioGroup(buttons, onPick) {
+  const pick = (b) => {
+    buttons.forEach((x) => { x.setAttribute("aria-checked", String(x === b)); x.tabIndex = x === b ? 0 : -1; });
+    onPick(b);
+  };
+  buttons.forEach((b, i) => {
+    b.tabIndex = b.getAttribute("aria-checked") === "true" ? 0 : -1;
+    b.addEventListener("click", () => pick(b));
+    b.addEventListener("keydown", (e) => {
+      const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+      if (!step) return;
+      e.preventDefault();
+      const next = buttons[(i + step + buttons.length) % buttons.length];
+      next.focus();
+      pick(next);
+    });
+  });
+}
+
+// Day: one held-out day (picked in the day selector). Week: all six days together.
+function setScope(scope, date) {
+  const wl = state.wl;
+  wl.scope = scope;
+  wl.date = date;
+  $$("#f-scope button").forEach((b) => {
+    const on = b.dataset.scope === scope;
+    b.setAttribute("aria-checked", String(on));
+    b.tabIndex = on ? 0 : -1;
+  });
+  $$("#week .day").forEach((x) => x.setAttribute("aria-pressed", String(scope === "day" && x.dataset.date === date)));
+  renderWlKpis(false);
+  return loadList(true);
+}
+
+function renderWlKpis(animate) {
+  const o = state.overview, wl = state.wl;
+  const day = wl.scope === "day" ? o.per_day.find((d) => d.date === wl.date) : null;
+  const scope = day ? `${day.weekday.slice(0, 3)} ${fmtDate(day.date)}` : "held-out week";
+  const high = day ? day.high : o.totals.high;
+  const booked = day ? day.appointments : o.totals.appointments;
+  const expected = day ? day.expected_dna : o.totals.expected_dna;
+  const actual = day ? day.actual_dna : o.totals.actual_dna;
+  const tm = o.test_metrics || {}, x = tm.xgboost || {}, ci = tm.ci || {};
+  // Fall back to the capture curve and comparison table when metrics.json has no test block
+  const top20 = x.noshows_captured_top20pct ?? o.capture.find((c) => Math.abs(c.contacted - 0.2) < 1e-6)?.reached;
+  const auc = x.roc_auc ?? o.models.find((m) => m.model === "XGBoost")?.roc_auc;
+  const range = (r, f) => (r ? `95% CI ${f(r[0])} to ${f(r[1])}` : null);
+  fill($("#wl-kpis"),
+    kpi({ icon: ICON.alert, tone: "high", label: "High-risk appointments",
+      value: countUp(high, fmtInt, { animate }), note: `${pct(high / booked)} of ${fmtInt(booked)} booked, ${scope}` }),
+    kpi({ icon: ICON.calendarX, tone: "medium", label: "Expected no-shows",
+      value: countUp(expected, fmtInt, { animate }), note: `Actual ${fmtInt(actual)}, ${scope}` }),
+    kpi({ icon: ICON.target, tone: "low", label: "Top-20% capture",
+      value: top20 != null ? countUp(top20, (v) => pct(v, 1), { animate }) : "–",
+      note: [range(ci.capture_top20_ci95, (v) => pct(v, 1)), "held-out week"].filter(Boolean).join(", ") }),
+    kpi({ icon: ICON.curve, label: "ROC AUC",
+      value: auc != null ? countUp(auc, (v) => v.toFixed(3), { animate }) : "–",
+      note: [range(ci.roc_auc_ci95, (v) => v.toFixed(3)), "held-out week"].filter(Boolean).join(", ") }));
+}
+
+function renderWlCapture(animate) {
+  captureChart($("#wl-capture"), state.overview.capture, animate && !reduceMotion(),
+    ["Who to contact first", "Share of the held-out week's no-shows reached when calling appointments in order of predicted risk. Hover the line for each step."]);
+}
+
+function renderWeek() {
   const wl = state.wl;
   const days = state.overview.per_day.map((d) => {
     const total = d.appointments;
     const seg = (n, b) => h("i", { style: { width: `${(n / total) * 100}%`, background: bandFill(b) } });
     const btn = h("button", {
-      type: "button", class: "day", dataset: { date: d.date }, "aria-pressed": String(d.date === wl.date),
-      "aria-label": `${d.weekday} ${fmtDate(d.date, { day: "numeric", month: "long" })}: ${fmtInt(d.appointments)} appointments, about ${fmtInt(d.expected_dna)} expected no-shows`,
+      type: "button", class: "day", dataset: { date: d.date }, "aria-pressed": String(wl.scope === "day" && d.date === wl.date),
+      "aria-label": `${d.weekday} ${fmtDate(d.date, { day: "numeric", month: "long" })}: ${fmtInt(d.appointments)} appointments, ${fmtInt(d.high)} high risk, about ${fmtInt(d.expected_dna)} expected no-shows`,
     },
-      h("div", { class: "day-top" }, h("span", { class: "day-name" }, d.weekday.slice(0, 3)), h("span", { class: "day-date" }, fmtDate(d.date))),
-      h("div", { class: "day-figure" }, h("b", null, countUp(d.expected_dna, fmtInt, { animate })), h("span", null, "expected", h("br"), "no-shows")),
-      tipLines(h("div", { class: "day-bar" }, seg(d.high, "High"), seg(d.medium, "Medium"), seg(d.low, "Low")),
-        [d.weekday, `High ${fmtInt(d.high)}`, `Medium ${fmtInt(d.medium)}`, `Low ${fmtInt(d.low)}`]),
-      h("div", { class: "day-meta" }, h("span", null, `${fmtInt(d.appointments)} booked`), h("span", null, `${fmtInt(d.high)} high risk`),
-        wl.showOutcome ? h("span", null, `${fmtInt(d.actual_dna)} actually missed`) : null));
-    btn.addEventListener("click", () => {
-      wl.date = d.date;
-      $$("#week .day").forEach((x) => x.setAttribute("aria-pressed", String(x === btn)));
-      loadList(true);
-    });
+      h("span", { class: "day-date", "aria-hidden": "true" }, h("small", null, d.weekday.slice(0, 3)), h("b", null, fmtDate(d.date, { day: "numeric" }))),
+      h("span", { class: "day-meta" }, h("span", null, h("b", null, fmtInt(d.appointments)), " booked"), h("span", null, h("b", null, fmtInt(d.high)), " high risk")),
+      tipLines(h("span", { class: "day-bar" }, seg(d.high, "High"), seg(d.medium, "Medium"), seg(d.low, "Low")),
+        [`${d.weekday} ${fmtDate(d.date)}`, `High ${fmtInt(d.high)}`, `Medium ${fmtInt(d.medium)}`, `Low ${fmtInt(d.low)}`,
+          `Expected no-shows ${fmtInt(d.expected_dna)}`, ...(wl.showOutcome ? [`Actually missed ${fmtInt(d.actual_dna)}`] : [])]));
+    btn.addEventListener("click", () => setScope("day", d.date));
     return btn;
   });
   fill($("#week"), days);
 }
 
-const stateRow = (text, cls = "") => h("tr", { class: `state-row ${cls}` }, h("td", { colspan: "7" }, text));
+const stateRow = (text, cls = "") => h("tr", { class: `state-row ${cls}` }, h("td", { colspan: "6" }, text));
 
 let listSeq = 0;
-let curveDrawn = false;
 async function loadList(reset) {
   const wl = state.wl;
   const seq = ++listSeq;
   if (reset) { wl.offset = 0; wl.rows = []; }
-  const q = new URLSearchParams({ date: wl.date, limit: PAGE, offset: wl.offset, group_patients: wl.group });
+  const q = new URLSearchParams({ limit: PAGE, offset: wl.offset, group_patients: wl.group });
+  if (wl.scope === "day") q.set("date", wl.date);
   if (wl.hood) q.set("neighbourhood", wl.hood);
   if (wl.band) q.set("band_filter", wl.band);
   const tbody = $("#appts tbody");
@@ -429,8 +498,11 @@ async function loadList(reset) {
   wl.rows = wl.rows.concat(data.rows);
   wl.offset += data.rows.length;
 
-  const day = state.overview.per_day.find((d) => d.date === wl.date);
-  $("#list-title").textContent = `${day.weekday} ${fmtDate(wl.date, { day: "numeric", month: "long" })}${wl.hood ? `, ${wl.hood}` : ""}`;
+  const o = state.overview;
+  const day = wl.scope === "day" ? o.per_day.find((d) => d.date === wl.date) : null;
+  const when = day ? `${day.weekday} ${fmtDate(wl.date, { day: "numeric", month: "long" })}`
+    : `Held-out week, ${fmtDate(o.window.start, { day: "numeric", month: "short" })} to ${fmtDate(o.window.end, { day: "numeric", month: "short" })}`;
+  $("#list-title").textContent = `${when}${wl.hood ? `, ${wl.hood}` : ""}`;
   const who = data.grouped && data.total !== data.appointments
     ? `${fmtInt(data.total)} patients (${fmtInt(data.appointments)} appointments)`
     : `${fmtInt(data.appointments)} appointments`;
@@ -438,7 +510,6 @@ async function loadList(reset) {
     ? `${who}${wl.band ? ` in the ${wl.band.toLowerCase()} band` : ""}, about ${fmtInt(data.expected_dna)} expected no-shows. Highest risk first.`
     : "";
   renderRepeatNote(data, day);
-  if (reset) { renderCurve(data.risk_strip, !curveDrawn); curveDrawn = true; }
 
   if (!wl.rows.length) {
     fill(tbody, stateRow("No appointments match these filters. Try another neighbourhood or risk band."));
@@ -448,15 +519,16 @@ async function loadList(reset) {
   }
   $("#page-info").textContent = wl.total ? `Showing ${fmtInt(wl.rows.length)} of ${fmtInt(wl.total)}` : "";
   $("#load-more").hidden = wl.rows.length >= wl.total;
-  // A filter change can drop the open appointment from the list; don't leave its details on screen
-  if (reset && wl.selected && !wl.rows.some((r) => r.id === wl.selected)) clearDetail();
+  // A filter change can drop the open appointment from the list; don't leave its details on screen.
+  // An appointment opened from search stays open even if it sits further down the list.
+  if (reset && wl.selected && wl.selectedFrom === "row" && !wl.rows.some((r) => r.id === wl.selected)) clearDetail();
   // Wide screens have room for the detail panel, so open the riskiest appointment straight away
   if (reset && !wl.selected && wl.rows[0] && matchMedia("(min-width: 1181px)").matches) selectRow(wl.rows[0].id);
 }
 
 function renderRepeatNote(data, day) {
   const el = $("#repeat-note");
-  const top = state.overview.repeats?.top20_by_day.find((d) => d.date === day.date);
+  const top = day && state.overview.repeats?.top20_by_day.find((d) => d.date === day.date);
   const dominated = top && top.max_rows_one_patient >= 3;
   if (!data.grouped) {
     el.hidden = !dominated;
@@ -472,74 +544,20 @@ function renderRepeatNote(data, day) {
 }
 
 function rowNode(r) {
-  const band = r.band;
   return h("tr", { tabindex: "0", dataset: { id: r.id }, "aria-current": String(r.id === state.wl.selected) },
-    h("td", null, h("div", { class: "risk-cell" },
-      h("b", null, `${Math.round(r.risk * 100)}%`),
-      h("span", { class: "risk-track", "aria-hidden": "true" },
-        h("i", { style: { width: `${Math.min(r.risk, 1) * 100}%`, background: bandFill(band) } })),
-      pill(band, band))),
     h("td", null,
       h("div", { class: "appt-id" }, `#${r.id}`,
         r.appts_that_day > 1 ? tipLines(h("span", { class: "repeat-badge" }, `${r.appts_that_day} bookings`),
           [`This patient has ${r.appts_that_day} bookings on this day`]) : null),
-      h("div", { class: "appt-hood" }, r.neighbourhood)),
-    h("td", { class: "num hide-sm" }, String(r.age)),
-    h("td", { class: "num", "data-label": "Booked" }, r.lead_time_days === 0 ? "Same day" : `${r.lead_time_days} d`),
+      h("div", { class: "appt-hood" }, `${r.neighbourhood}, age ${r.age}`),
+      state.wl.scope === "week" ? h("div", { class: "appt-when" }, fmtDate(r.date, { weekday: "short", day: "numeric", month: "short" })) : null),
+    h("td", null, h("div", { class: "risk-cell" }, h("b", null, `${Math.round(r.risk * 100)}%`), pill(r.band, r.band))),
+    h("td", { class: "num", "data-label": "Booked" }, r.lead_time_days === 0 ? "Same day" : `${r.lead_time_days} d`,
+      h("div", { class: "appt-sub" }, r.sms_received ? "SMS sent" : "No SMS")),
     h("td", { class: "num", "data-label": r.prior_appts ? "Missed" : null },
       r.prior_appts ? `${r.prior_no_shows} of ${r.prior_appts}` : h("span", { class: "muted" }, "No earlier visit")),
-    h("td", { class: "hide-sm hide-md" }, r.sms_received ? "Sent" : h("span", { class: "muted" }, "No")),
+    h("td", { class: "hide-sm action-col" }, r.action),
     h("td", { class: "outcome-col" }, r.attended ? h("span", { class: "outcome ok" }, "Attended") : h("span", { class: "outcome dna" }, "Did not attend")));
-}
-
-// Risk curve: every appointment in the list, riskiest first, as one continuous area.
-// The fill is split into bands at the 35% and 20% cut-offs.
-function renderCurve(all, animate) {
-  const el = $("#curve");
-  el.dataset.values = JSON.stringify(all);
-  if (!all.length) { fill(el); el.hidden = true; return; }
-  el.hidden = false;
-  const W = Math.max(200, el.clientWidth), H = Math.max(80, el.clientHeight);
-  const n = Math.min(all.length, Math.max(2, Math.floor(W / 2)));
-  const values = Array.from({ length: n }, (_, i) => all[Math.floor((i * all.length) / n)]);
-  const yMax = Math.min(1, Math.max(0.45, Math.ceil(values[0] * 10) / 10));
-  const x = (i) => (n === 1 ? 0 : (i / (n - 1)) * W);
-  const y = (v) => H - (Math.min(v, yMax) / yMax) * H;
-  const pts = values.map((v, i) => [x(i), y(v)]);
-  const edge = pts.map(([px, py], i) => `${i ? "L" : "M"}${px.toFixed(1)},${py.toFixed(1)}`).join("");
-  const area = `${edge}L${W},${H}L0,${H}Z`;
-  const gid = "curve-bands";
-  const stop = (off, col) => s("stop", { offset: off, style: { "stop-color": col } });
-  const yHigh = y(0.35) / H, yMed = y(0.2) / H;
-  const label = (v, text) => {
-    const ty = y(v);
-    return [s("line", { class: "band-line", x1: 0, x2: W, y1: ty, y2: ty }),
-      s("text", { class: "band-label", x: W - 4, y: ty - 5, "text-anchor": "end" }, text)];
-  };
-  const svg = s("svg", { viewBox: `0 0 ${W} ${H}`, preserveAspectRatio: "none", class: animate && !reduceMotion() ? "draw" : null },
-    s("defs", null, s("linearGradient", { id: gid, x1: 0, x2: 0, y1: 0, y2: H, gradientUnits: "userSpaceOnUse" },
-      stop(0, "var(--high-fill)"), stop(yHigh, "var(--high-fill)"),
-      stop(yHigh, "var(--medium-fill)"), stop(yMed, "var(--medium-fill)"),
-      stop(yMed, "var(--low-fill)"), stop(1, "var(--low-fill)"))),
-    s("path", { d: area, fill: `url(#${gid})`, opacity: ".85" }),
-    s("path", { class: "edge", d: edge }),
-    label(0.35, "High from 35%"), label(0.2, "Medium from 20%"),
-    s("line", { class: "cursor", y1: 0, y2: H, visibility: "hidden" }),
-    s("circle", { class: "cursor-dot", r: 4, visibility: "hidden" }));
-  fill(el, svg);
-  el.dataset.manualTip = "";
-  const cursor = $(".cursor", svg), dot = $(".cursor-dot", svg);
-  const at = (e) => {
-    const r = svg.getBoundingClientRect();
-    const i = Math.round(Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)) * (n - 1));
-    const cx = (x(i) / W) * r.width, cy = (y(values[i]) / H) * r.height;
-    cursor.setAttribute("x1", x(i)); cursor.setAttribute("x2", x(i)); cursor.setAttribute("visibility", "visible");
-    dot.setAttribute("cx", x(i)); dot.setAttribute("cy", y(values[i])); dot.setAttribute("visibility", "visible");
-    showTip([`${pct(values[i])} risk`, `${pct(i / values.length)} of this list scores higher`], r.left + cx, r.top + cy);
-  };
-  el.onpointermove = at;
-  el.onclick = at;
-  el.onpointerleave = () => { cursor.setAttribute("visibility", "hidden"); dot.setAttribute("visibility", "hidden"); hideTip(); };
 }
 
 $("#appts tbody").addEventListener("click", (e) => {
@@ -554,10 +572,11 @@ $("#appts tbody").addEventListener("keydown", (e) => {
   if (e.key === "ArrowUp") { e.preventDefault(); tr.previousElementSibling?.focus(); }
 });
 
-function selectRow(id) {
+function selectRow(id, from = "row") {
   state.wl.selected = id;
+  state.wl.selectedFrom = from;
   $$("#appts tbody tr").forEach((tr) => tr.setAttribute("aria-current", String(+tr.dataset.id === id)));
-  loadDetail(id);
+  return loadDetail(id);
 }
 
 const EMPTY_DETAIL = [...$("#detail").childNodes].map((n) => n.cloneNode(true));
@@ -591,9 +610,9 @@ async function loadDetail(id, animate = true) {
     res = await api(`/api/appointments/${id}`);
   } catch (err) {
     fill(el, h("div", { class: "error-box" }, `Couldn't explain this appointment: ${err.message}`));
-    return;
+    return null;
   }
-  if (seq !== detailSeq) return;
+  if (seq !== detailSeq) return null;
   const outcome = state.wl.showOutcome
     ? h("p", { class: "small", style: { "margin-top": "4px" } }, "Outcome: ",
       h("strong", { class: `outcome ${res.attended ? "ok" : "dna"}` }, res.attended ? "Attended" : "Did not attend")) : null;
@@ -614,6 +633,58 @@ async function loadDetail(id, animate = true) {
     ai);
   el.scrollTop = 0;
   mountAI(ai, { appointment_id: id });
+  return res;
+}
+
+// ---------------------------------------------------------------------------
+// Top-bar search: an appointment ID opens it; a neighbourhood filters the worklist
+// ---------------------------------------------------------------------------
+function initSearch() {
+  const input = $("#search-input"), msg = $("#search-msg");
+  add($("#hood-list"), state.meta.neighbourhoods.map((n) => h("option", { value: n })));
+  let msgTimer;
+  const say = (text) => {
+    msg.textContent = text;
+    msg.hidden = false;
+    clearTimeout(msgTimer);
+    msgTimer = setTimeout(() => { msg.hidden = true; }, 4500);
+  };
+  input.addEventListener("input", () => { msg.hidden = true; });
+  $("#search").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const q = input.value.trim().replace(/^#/, "");
+    if (!q) return;
+    if (!state.meta.has_worklist) return say("Search needs the worklist, which isn't available on this server.");
+    const lower = q.toLowerCase();
+    const hoods = state.meta.neighbourhoods;
+    const hood = /^\d+$/.test(q) ? null
+      : hoods.find((n) => n.toLowerCase() === lower) ?? (() => {
+        const hits = hoods.filter((n) => n.toLowerCase().includes(lower));
+        return hits.length === 1 ? hits[0] : null;
+      })();
+    if (!/^\d+$/.test(q) && !hood) return say(`No appointment ID or neighbourhood matches "${q}".`);
+
+    if (location.hash !== "#/worklist") { location.hash = "#/worklist"; route(); }
+    await worklistReady;
+    if (!state.overview) return;
+    const wl = state.wl;
+    if (hood) {
+      wl.hood = hood;
+      $("#f-hood").value = hood;
+      await loadList(true);
+      return;
+    }
+    const res = await selectRow(+q, "search");
+    if (!res) return say(`Appointment #${q} isn't in the held-out week.`);
+    // Show the list for that appointment's day, without filters that would hide it
+    if (wl.scope !== "day" || wl.date !== res.date || wl.band || wl.hood) {
+      wl.band = ""; wl.hood = "";
+      $("#f-hood").value = "";
+      $$("#f-band button").forEach((b) => { b.setAttribute("aria-checked", String(!b.dataset.band)); b.tabIndex = b.dataset.band ? -1 : 0; });
+      await setScope("day", res.date);
+    }
+    input.value = "";
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -748,17 +819,19 @@ async function initModel() {
     fill($("#kpis"), h("div", { class: "error-box", style: { "grid-column": "1 / -1" } }, `Couldn't load results: ${err.message}`));
     return;
   }
-  const xgbRow = o.models.find((m) => m.model === "XGBoost") || {};
-  const at = (f) => o.capture.find((c) => Math.abs(c.contacted - f) < 1e-6)?.reached ?? 0;
-  const bottom30 = 1 - at(0.7);
+  const tm = o.test_metrics || {}, x = tm.xgboost || {}, ci = tm.ci || {}, ab = tm.ablations;
   $("#model-lede").textContent = `Tested on ${fmtInt(o.totals.appointments)} appointments from ${fmtDate(o.window.start, { day: "numeric", month: "long" })} to ${fmtDate(o.window.end, { day: "numeric", month: "long", year: "numeric" })}, which the model never saw during training.${state.meta.calibrated ? " Scores are calibrated so they read as probabilities." : ""}`;
-  const kpi = (value, text) => h("div", { class: "kpi" }, h("b", null, value), h("span", null, text));
-  const p0 = (v) => pct(v);
+  const num = (v, f) => (v != null ? countUp(v, f) : "–");
+  const afterBrier = o.calibration_summary?.test?.after?.brier;
   fill($("#kpis"),
-    kpi(countUp(at(0.2), p0), "of no-shows reached by contacting the riskiest 20%, nearly twice random (1.9×)"),
-    kpi(countUp(bottom30, p0), "of no-shows fall in the lowest-risk 30%, where reminders could be lighter"),
-    kpi([countUp(o.totals.high_band_rate, p0), " vs ", countUp(o.totals.low_band_rate, p0)], "actual no-show rate, high band vs low band"),
-    kpi(xgbRow.roc_auc != null ? countUp(xgbRow.roc_auc, (v) => v.toFixed(2)) : "–", "ROC AUC on unseen dates (1.0 is perfect, 0.5 is chance)"));
+    kpi({ icon: ICON.curve, label: "ROC AUC", value: num(x.roc_auc, (v) => v.toFixed(3)),
+      note: ci.roc_auc_ci95 ? `95% CI ${ci.roc_auc_ci95[0].toFixed(3)} to ${ci.roc_auc_ci95[1].toFixed(3)}. 0.5 is chance` : "0.5 is chance, 1.0 is perfect" }),
+    kpi({ icon: ICON.target, tone: "low", label: "PR AUC", value: num(x.pr_auc, (v) => v.toFixed(3)),
+      note: x.pr_auc_lift_vs_random != null ? `${x.pr_auc_lift_vs_random.toFixed(2)}× random (${o.totals.actual_rate.toFixed(3)})` : null }),
+    kpi({ icon: ICON.pulse, tone: "medium", label: "Brier score", value: num(x.brier, (v) => v.toFixed(3)),
+      note: afterBrier != null ? `Before calibration, ${afterBrier.toFixed(3)} after. Lower is better` : "Lower is better" }),
+    kpi({ icon: ICON.alert, tone: "high", label: "Top-10% capture", value: num(x.noshows_captured_top10pct, (v) => pct(v, 1)),
+      note: x.noshows_captured_top20pct != null ? `of no-shows in the riskiest 10%. Top 20% reaches ${pct(x.noshows_captured_top20pct, 1)}` : "of no-shows in the riskiest 10%" }));
 
   renderModelCharts(true);
   fill($("#models-table"),
@@ -767,7 +840,15 @@ async function initModel() {
       h("tbody", null, o.models.map((m) => h("tr", null,
         h("td", null, m.model), h("td", { class: "num" }, m.roc_auc.toFixed(3)),
         h("td", { class: "num" }, m.pr_auc.toFixed(3)), h("td", { class: "num" }, pct(m.noshows_captured_top20pct, 1)))))),
-    h("p", { class: "small muted note" }, `Logistic regression is almost as good, so a simpler, more transparent model could be preferred in practice. PR-AUC of random guessing is ${o.totals.actual_rate.toFixed(3)}.`));
+    h("p", { class: "small muted note" }, `Logistic regression is almost as good, so a simpler, more transparent model could be preferred in practice. PR-AUC of random guessing is ${o.totals.actual_rate.toFixed(3)}.`),
+    ab ? [h("h2", { class: "ablation-h" }, "What each feature group adds"),
+      h("table", { class: "data-table" },
+        h("thead", null, h("tr", null, h("th", null, "XGBoost trained on"), h("th", { class: "num" }, "ROC AUC"))),
+        h("tbody", null, [
+          ["Lead time only", ab.xgboost_lead_time_only_roc_auc],
+          ["All features except attendance history", ab.xgboost_without_history_features_roc_auc],
+          ["All selected features", ab.xgboost_all_selected_features_roc_auc],
+        ].filter(([, v]) => v != null).map(([k, v]) => h("tr", null, h("td", null, k), h("td", { class: "num" }, v.toFixed(3))))))] : null);
 }
 
 function renderModelCharts(first) {
@@ -802,7 +883,7 @@ function yGrid(f, ticks, y, fmt) {
 }
 const chartHead = (title, sub) => [h("h2", null, title), h("p", { class: "sub" }, sub)];
 
-function captureChart(el, data, animate) {
+function captureChart(el, data, animate, head = ["Who to contact first", "Share of all no-shows reached when contacting appointments in order of predicted risk."]) {
   const f = frame(chartW(el), 300, { t: 16, r: 24, b: 44, l: 48 });
   const x = (v) => f.m.l + v * f.iw;
   const y = (v) => f.m.t + (1 - v) * f.ih;
@@ -833,7 +914,7 @@ function captureChart(el, data, animate) {
       s("circle", { class: "dot", cx: x(0.2), cy: y(p20.reached), r: 5 }),
       s("text", { class: "direct-label", x: x(0.2) + 10, y: y(p20.reached) + 18 }, `Top 20% reaches ${pct(p20.reached)}`)),
     cross, hit);
-  fill(el, chartHead("Who to contact first", "Share of all no-shows reached when contacting appointments in order of predicted risk."), svg,
+  fill(el, chartHead(...head), svg,
     dataTable(["Contacted", "No-shows reached", "Random"], data.filter((_, i) => i % 2 === 0).map((d) => [pct(d.contacted), pct(d.reached, 1), pct(d.contacted)])));
   hit.addEventListener("pointermove", (e) => {
     const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
@@ -998,12 +1079,11 @@ async function initMonitoring() {
   const t = m.thresholds, weekly = m.performance.weekly, last = weekly[weekly.length - 1];
   $("#sim-note").textContent = m.simulation_note;
   const nAlerts = m.alerts.filter((a) => a.level === "alert").length;
-  const kpi = (value, text) => h("div", { class: "kpi" }, h("b", null, value), h("span", null, text));
   fill($("#mon-kpis"),
-    kpi(String(nAlerts), "alerts raised while replaying the held-out days"),
-    kpi(sortedMetric(last.roc_auc), `ROC AUC, latest window (${fmtDate(last.start)} to ${fmtDate(last.end)}). Alert below ${t.auc_min.toFixed(2)}`),
-    kpi(sortedMetric(last.ece), `Calibration error (ECE), latest window. Alert above ${t.ece_max.toFixed(2)}`),
-    kpi(fmtInt(m.live.predictions), `predictions logged since the server started (model ${m.model_version})`));
+    kpi({ icon: ICON.alert, tone: nAlerts ? "high" : "low", label: "Alerts raised", value: String(nAlerts), note: "while replaying the held-out days" }),
+    kpi({ icon: ICON.curve, label: "ROC AUC, latest window", value: sortedMetric(last.roc_auc), note: `${fmtDate(last.start)} to ${fmtDate(last.end)}. Alert below ${t.auc_min.toFixed(2)}` }),
+    kpi({ icon: ICON.target, tone: "medium", label: "Calibration error (ECE)", value: sortedMetric(last.ece), note: `Latest window. Alert above ${t.ece_max.toFixed(2)}` }),
+    kpi({ icon: ICON.pulse, tone: "low", label: "Predictions logged", value: fmtInt(m.live.predictions), note: `since the server started (model ${m.model_version})` }));
 
   // Alerts
   fill($("#mon-alerts"), h("h2", null, "Alerts"),
@@ -1064,17 +1144,17 @@ async function boot() {
   st.classList.toggle("on", state.meta.llm_enabled);
   st.textContent = state.meta.llm_enabled ? "AI assistant on" : "AI assistant off";
   st.title = state.meta.llm_enabled ? `Model: ${state.meta.llm_model}` : "Set HF_TOKEN on the server to enable";
+  if (state.meta.model_version) $("#model-version").textContent = `Model ${state.meta.model_version}`;
+  initSearch();
   addEventListener("hashchange", route);
   let rt, lastW = innerWidth;
   addEventListener("resize", () => {
-    moveTabInk();
     clearTimeout(rt);
     rt = setTimeout(() => {
       if (innerWidth === lastW) return;
       lastW = innerWidth;
       if (started.has("model") && state.overview) renderModelCharts(false);
-      const curve = $("#curve");
-      if (curve.dataset.values) renderCurve(JSON.parse(curve.dataset.values), false);
+      if (started.has("worklist") && state.overview) renderWlCapture(false);
       $("#scrim").classList.toggle("on", $("#detail").classList.contains("open") && narrow());
     }, 150);
   });

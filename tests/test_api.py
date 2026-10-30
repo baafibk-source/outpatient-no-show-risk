@@ -65,6 +65,7 @@ def test_worklist_filters_and_grouping(client):
     assert {r["date"] for r in one_day["rows"]} == {"2016-06-03"}
     high = client.get("/api/appointments?band_filter=High&limit=500").json()
     assert {r["band"] for r in high["rows"]} <= {"High"}
+    assert all(r["action"] for r in data["rows"])
 
 
 def test_worklist_query_limits(client):
