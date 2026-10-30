@@ -1,7 +1,7 @@
 /* DNA Risk Dashboard ---------------------------------------------------------
    Soft and airy: a lavender accent on near-white, light-weight type, generous space.
-   Risk bands carry meaning through hue, lightness and shape (High ▲ rose, Medium ◆ peach,
-   Low ▼ mint) so they stay distinct for colour-blind readers and in both themes.
+   Risk bands carry meaning through hue, lightness and shape (High ▲ deep red, Medium ◆ amber,
+   Low ▼ blue) so they stay distinct for colour-blind readers and in both themes.
    No web fonts (the CSP allows none): the system UI face at light weights. */
 
 :root {
@@ -22,9 +22,9 @@
   --series: #8B88E6;
 
   /* Risk bands: *-fill for marks and bars, text colour for words, *-soft for tints */
-  --high-fill: #F09AA2;  --high: #B23A48;  --high-soft: #FDEDEF;
-  --medium-fill: #F5C27F; --medium: #8F5508; --medium-soft: #FEF4E4;
-  --low-fill: #8ED3BC;   --low: #1C7259;   --low-soft: #E7F6F0;
+  --high-fill: #B42318;  --high: #9A1B12;  --high-soft: #FCEAE8;
+  --medium-fill: #E9A23B; --medium: #8A5300; --medium-soft: #FDF3E2;
+  --low-fill: #4C8DF0;   --low: #1D5FC2;   --low-soft: #E8F0FD;
   --raise: var(--high-fill);
   --lower: var(--low-fill);
 
@@ -52,9 +52,9 @@
     --bg: #12141C; --surface: #1A1D28; --surface-2: #20232F; --surface-3: #2A2E3B;
     --ink: #E9EAF1; --ink-2: #A9AEBE; --ink-3: #7F8496; --line: #262A36; --line-strong: #363B4A;
     --accent: #ABA8FF; --accent-ink: #12141C; --accent-soft: #26264A; --accent-line: #403F7A; --series: #A19EFA;
-    --high-fill: #E58C95; --high: #F6B0B7; --high-soft: #3A2329;
-    --medium-fill: #E3B272; --medium: #F2CF9C; --medium-soft: #352B1C;
-    --low-fill: #78C8AD; --low: #A0E0CA; --low-soft: #18322A;
+    --high-fill: #D64B42; --high: #F5A39D; --high-soft: #3E1C1B;
+    --medium-fill: #E6AA4E; --medium: #F2CF9C; --medium-soft: #352B1C;
+    --low-fill: #6EA4F5; --low: #A9C9FA; --low-soft: #1A2A45;
     --notice-bg: #262119; --notice-line: #42382A; --notice-ink: #EBD5B0;
     --ring: rgba(255, 255, 255, .06);
     --shadow-1: 0 0 0 1px var(--ring), 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px -12px rgba(0, 0, 0, .5);
@@ -70,9 +70,9 @@
     --bg: #12141C; --surface: #1A1D28; --surface-2: #20232F; --surface-3: #2A2E3B;
     --ink: #E9EAF1; --ink-2: #A9AEBE; --ink-3: #7F8496; --line: #262A36; --line-strong: #363B4A;
     --accent: #ABA8FF; --accent-ink: #12141C; --accent-soft: #26264A; --accent-line: #403F7A; --series: #A19EFA;
-    --high-fill: #E58C95; --high: #F6B0B7; --high-soft: #3A2329;
-    --medium-fill: #E3B272; --medium: #F2CF9C; --medium-soft: #352B1C;
-    --low-fill: #78C8AD; --low: #A0E0CA; --low-soft: #18322A;
+    --high-fill: #D64B42; --high: #F5A39D; --high-soft: #3E1C1B;
+    --medium-fill: #E6AA4E; --medium: #F2CF9C; --medium-soft: #352B1C;
+    --low-fill: #6EA4F5; --low: #A9C9FA; --low-soft: #1A2A45;
     --notice-bg: #262119; --notice-line: #42382A; --notice-ink: #EBD5B0;
     --ring: rgba(255, 255, 255, .06);
     --shadow-1: 0 0 0 1px var(--ring), 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px -12px rgba(0, 0, 0, .5);
