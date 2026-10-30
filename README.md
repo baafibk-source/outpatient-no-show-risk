@@ -1,8 +1,10 @@
-# DNA Risk Dashboard: predicting outpatient no-shows
+# Outpatient no-show (DNA) risk dashboard
 
 > **Proof of concept on public data.** Built on the Kaggle *Medical Appointment No Shows* dataset (Brazil, 2016). It is **not NHS data** and **not for clinical or operational use**.
 
 Missed outpatient appointments ("Did Not Attend", DNA) waste clinic capacity and delay care for other patients. This project scores each upcoming appointment for no-show risk, explains every score with SHAP, and suggests who clinic staff should contact first.
+
+Headline result: contacting the top 20% of appointments by predicted risk reaches 37% of all no-shows (about 1.9x random), with ROC AUC 0.733 on later dates the model never saw.
 
 **Live demo:** [huggingface.co/spaces/Baafi02/dna-risk-dashboard](https://huggingface.co/spaces/Baafi02/dna-risk-dashboard) · **Code:** [github.com/baafibk-source/outpatient-no-show-risk](https://github.com/baafibk-source/outpatient-no-show-risk)
 
@@ -133,4 +135,4 @@ uvicorn dashboard.server:app --reload
 
 ## Data and licence
 
-Data: [Medical Appointment No Shows](https://www.kaggle.com/datasets/joniarroba/noshowappointments) by Joni Hoppen (Aquarela Analytics), used under the terms on its Kaggle page. Neither the raw CSV nor the cleaned feature table (`noshow_features.parquet`) is included in this repository; `prep_noshow.py` builds the table from the CSV you download. Code: MIT (see LICENSE). Data: the Kaggle Medical Appointment No Shows dataset, used under the terms on its Kaggle page; it is not redistributed in this repository.
+Code: MIT (see LICENSE). Data: Kaggle Medical Appointment No Shows by Joni Hoppen (Aquarela Analytics), used under the terms on its Kaggle page. Neither the raw CSV nor the cleaned feature table is in this repository. The live demo's Space bundles the cleaned table under the same non-commercial terms.
