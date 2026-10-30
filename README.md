@@ -4,7 +4,7 @@
 
 Missed outpatient appointments ("Did Not Attend", DNA) waste clinic capacity and delay care for other patients. This project scores each upcoming appointment for no-show risk, explains every score with SHAP, and suggests who clinic staff should contact first.
 
-**Live demo:** [TODO: public link] · **Code:** [TODO: GitHub link]
+**Live demo:** [huggingface.co/spaces/Baafi02/dna-risk-dashboard](https://huggingface.co/spaces/Baafi02/dna-risk-dashboard) · **Code:** [github.com/baafibk-source/outpatient-no-show-risk](https://github.com/baafibk-source/outpatient-no-show-risk)
 
 ![Worklist: summary figures, capture curve, held-out days, and an appointment's SHAP explanation](docs/worklist.png)
 
@@ -133,4 +133,4 @@ uvicorn dashboard.server:app --reload
 
 ## Data and licence
 
-Data: [Medical Appointment No Shows](https://www.kaggle.com/datasets/joniarroba/noshowappointments) by Joni Hoppen (Aquarela Analytics), used under the terms on its Kaggle page. Neither the raw CSV nor the cleaned feature table (`noshow_features.parquet`) is included in this repository; `prep_noshow.py` builds the table from the CSV you download. Code: MIT, see `LICENSE`. [TODO: confirm the licence line and copyright holder.]
+Data: [Medical Appointment No Shows](https://www.kaggle.com/datasets/joniarroba/noshowappointments) by Joni Hoppen (Aquarela Analytics), used under the terms on its Kaggle page. Neither the raw CSV nor the cleaned feature table (`noshow_features.parquet`) is included in this repository; `prep_noshow.py` builds the table from the CSV you download. Code: MIT (see LICENSE). Data: the Kaggle Medical Appointment No Shows dataset, used under the terms on its Kaggle page; it is not redistributed in this repository.
