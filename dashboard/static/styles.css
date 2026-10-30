@@ -23,7 +23,7 @@
 
   /* Risk bands: *-fill for marks and bars, text colour for words, *-soft for tints */
   --high-fill: #B42318;  --high: #9A1B12;  --high-soft: #FCEAE8;
-  --medium-fill: #E9A23B; --medium: #8A5300; --medium-soft: #FDF3E2;
+  --medium-fill: #C9840F; --medium: #8A5300; --medium-soft: #FDF3E2;
   --low-fill: #4C8DF0;   --low: #1D5FC2;   --low-soft: #E8F0FD;
   --raise: var(--high-fill);
   --lower: var(--low-fill);
@@ -297,17 +297,16 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px var(
 .switch input:focus-visible + .switch-track { outline: 2.5px solid var(--accent); outline-offset: 2px; }
 .switch:hover { color: var(--ink); }
 
-/* Summary figures ------------------------------------------------------------ */
-.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
-.kpi { padding: 20px 22px 22px; background: var(--surface); border-radius: var(--r-xl); box-shadow: var(--shadow-1); min-width: 0; }
-.kpi-top { display: flex; align-items: center; gap: 10px; font-size: .84rem; color: var(--ink-2); }
-.kpi-icon { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; flex: none; background: var(--accent-soft); color: var(--accent); }
-.kpi-icon svg { width: 17px; height: 17px; }
-.kpi-icon.high { background: var(--high-soft); color: var(--high); }
-.kpi-icon.medium { background: var(--medium-soft); color: var(--medium); }
-.kpi-icon.low { background: var(--low-soft); color: var(--low); }
-.kpi b { display: block; margin-top: 14px; font-family: var(--font-num); font-size: 2.3rem; font-weight: 300; letter-spacing: -.035em; line-height: 1.05; font-variant-numeric: tabular-nums; color: var(--ink); }
-.kpi > span { display: block; margin-top: 6px; font-size: .8rem; color: var(--ink-2); line-height: 1.45; }
+/* Summary figures: a ruled strip, like a report table, not cards ------------ */
+.kpis {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px;
+  background: var(--line-strong); border: 1px solid var(--line-strong); border-radius: 4px; overflow: hidden;
+}
+.kpi { padding: 18px 22px 20px; background: var(--surface); min-width: 0; }
+.kpi-label { font-size: .8rem; color: var(--ink-2); }
+.kpi b { display: block; margin-top: 10px; font-family: var(--font-num); font-size: 2.1rem; font-weight: 300; letter-spacing: -.03em; line-height: 1.05; font-variant-numeric: tabular-nums; color: var(--ink); }
+.kpi > span { display: block; margin-top: 6px; font-size: .78rem; color: var(--ink-2); line-height: 1.45; }
+.kpis > .loading, .kpis > .error-box { background: var(--surface); }
 
 /* Worklist: chart + day selector -------------------------------------------- */
 .overview-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 22px; margin-top: 22px; align-items: stretch; }
@@ -329,9 +328,15 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px var(
 .day[aria-pressed="true"] .day-date { background: var(--accent); color: var(--accent-ink); }
 .day-date small { display: block; font-size: .66rem; text-transform: uppercase; letter-spacing: .06em; opacity: .8; }
 .day-date b { display: block; font-size: 1.15rem; font-weight: 400; }
-.day-meta { display: flex; justify-content: space-between; gap: 8px; font-size: .8rem; color: var(--ink-2); }
+.day-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 8px; font-size: .78rem; color: var(--ink-2); }
+.day-meta > span { white-space: nowrap; }
 .day-meta b { color: var(--ink); font-weight: 500; }
 .day-bar { display: flex; height: 6px; gap: 2px; border-radius: 999px; overflow: hidden; }
+.band-key { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .76rem; color: var(--ink-2); }
+.band-key li { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.band-key b { font-weight: 500; color: var(--ink); }
+.band-key .swatch { width: 14px; height: 6px; border-radius: 999px; }
+.band-key .mark { width: 8px; height: 8px; }
 .day-bar i { display: block; height: 100%; }
 
 /* Worklist table --------------------------------------------------------------- */
@@ -571,6 +576,7 @@ legend + * { clear: both; }
 .data-table tbody tr:last-child td { border-bottom: 0; }
 .data-table td.num, .data-table th.num { text-align: right; }
 .calib-summary { margin-top: 16px; }
+.data-table td.nowrap { white-space: nowrap; }
 .prose h2 { margin-top: 4px; }
 .prose h2 + * { margin-top: 8px; }
 .prose ul { padding-left: 20px; margin: 10px 0 0; color: var(--ink-2); font-size: .9rem; max-width: 75ch; }
@@ -626,8 +632,8 @@ legend + * { clear: both; }
 .scrim { display: none; }
 
 /* Responsive ------------------------------------------------------------------ */
-@media (max-width: 1380px) {
-  .overview-grid { grid-template-columns: minmax(0, 1fr) 280px; }
+@media (max-width: 1480px) {
+  .overview-grid { grid-template-columns: minmax(0, 1fr) 300px; }
   .worklist-grid { grid-template-columns: minmax(0, 1fr) 380px; }
 }
 /* Tablet and landscape phone: detail becomes a drawer beside the list */
@@ -700,9 +706,8 @@ legend + * { clear: both; }
   .nav a span { font-size: .84rem; }
   .nav a svg { display: none; }
   h1 { font-size: 1.35rem; }
-  .kpis { gap: 10px; }
-  .kpi { padding: 16px; }
-  .kpi b { font-size: 1.8rem; margin-top: 10px; }
+  .kpi { padding: 14px 14px 16px; }
+  .kpi b { font-size: 1.7rem; margin-top: 8px; }
   .week { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .list-head { padding: 18px 16px 0; }
   .filters { padding: 14px 16px 4px; gap: 12px; }
@@ -729,7 +734,7 @@ legend + * { clear: both; }
   .sheet-grip { display: block; width: 40px; height: 5px; border-radius: 999px; background: var(--line-strong); margin: 10px auto 0; }
 
   /* Worklist rows become two-line cards */
-  .table-wrap { overflow: visible; margin-top: 8px; }
+  .list-card .table-wrap { overflow: visible; margin-top: 8px; }
   .appts, .appts tbody { display: block; }
   .appts thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   .appts tbody tr[data-id] {

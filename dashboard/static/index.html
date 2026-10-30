@@ -8,7 +8,7 @@
   <meta name="color-scheme" content="light dark">
   <!-- Applies the saved theme before first paint (external file: the CSP blocks inline scripts) -->
   <script src="/static/theme.js"></script>
-  <link rel="stylesheet" href="/static/styles.css?v=3">
+  <link rel="stylesheet" href="/static/styles.css?v=7">
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
@@ -92,6 +92,7 @@
           <div class="days-head">
             <h2>Held-out days</h2>
             <p class="sub" id="days-sub"></p>
+            <ul class="band-key" id="band-key" aria-label="Risk bands"></ul>
           </div>
           <div class="week" id="week" role="group" aria-label="Pick a day"></div>
         </div>
@@ -279,6 +280,6 @@
   </div>
 
   <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
-  <script type="module" src="/static/app.js?v=2"></script>
+  <script type="module" src="/static/app.js?v=8"></script>
 </body>
 </html>

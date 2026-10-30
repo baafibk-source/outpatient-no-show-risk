@@ -53,27 +53,13 @@ const ICON = {
     s("path", { d: "M6.2 3.2l2 3.1-1.4 1.5a10 10 0 0 0 5.4 5.4l1.5-1.4 3.1 2-.8 2.4c-.2.6-.8 1-1.4.9C8.8 16.5 3.5 11.2 2.9 5.4c-.1-.6.3-1.2.9-1.4z", fill: "none", stroke: "currentColor", "stroke-width": "1.6", "stroke-linejoin": "round" })),
   spark: () => s("svg", { viewBox: "0 0 20 20", "aria-hidden": "true" },
     s("path", { d: "M10 2.5l1.6 4.6 4.6 1.6-4.6 1.6L10 15l-1.6-4.7L3.8 8.7l4.6-1.6z", fill: "none", stroke: "currentColor", "stroke-width": "1.5", "stroke-linejoin": "round" })),
-  alert: () => s("svg", { viewBox: "0 0 20 20", "aria-hidden": "true" },
-    s("path", { d: "M10 3l7.5 13h-15z", fill: "none", stroke: "currentColor", "stroke-width": "1.5", "stroke-linejoin": "round" }),
-    s("path", { d: "M10 8v3.5", stroke: "currentColor", "stroke-width": "1.5", "stroke-linecap": "round" }), s("circle", { cx: 10, cy: 13.8, r: .9, fill: "currentColor" })),
-  calendarX: () => s("svg", { viewBox: "0 0 20 20", "aria-hidden": "true" },
-    s("rect", { x: 3, y: 4.5, width: 14, height: 12.5, rx: 3, fill: "none", stroke: "currentColor", "stroke-width": "1.5" }),
-    s("path", { d: "M3 8.5h14M7 2.5v3M13 2.5v3M8 11l4 3.5M12 11l-4 3.5", stroke: "currentColor", "stroke-width": "1.5", "stroke-linecap": "round" })),
-  target: () => s("svg", { viewBox: "0 0 20 20", "aria-hidden": "true" },
-    s("circle", { cx: 10, cy: 10, r: 7, fill: "none", stroke: "currentColor", "stroke-width": "1.5" }),
-    s("circle", { cx: 10, cy: 10, r: 3.5, fill: "none", stroke: "currentColor", "stroke-width": "1.5" }), s("circle", { cx: 10, cy: 10, r: 1, fill: "currentColor" })),
-  curve: () => s("svg", { viewBox: "0 0 20 20", "aria-hidden": "true" },
-    s("path", { d: "M3 17V3M3 17h14", stroke: "currentColor", "stroke-width": "1.5", "stroke-linecap": "round" }),
-    s("path", { d: "M3 17C5 9 9 5.5 17 4", fill: "none", stroke: "currentColor", "stroke-width": "1.5", "stroke-linecap": "round" })),
-  pulse: () => s("svg", { viewBox: "0 0 20 20", "aria-hidden": "true" },
-    s("path", { d: "M2 10h3.5l2-5 3 10 2-5H18", fill: "none", stroke: "currentColor", "stroke-width": "1.5", "stroke-linecap": "round", "stroke-linejoin": "round" })),
 };
 const bandMark = (band) => h("i", { class: `mark ${String(band).toLowerCase()}`, "aria-hidden": "true" });
 const pill = (band, text = `${band} risk`) => h("span", { class: `pill ${band}` }, bandMark(band), text);
 const bandFill = (b) => `var(--${String(b).toLowerCase()}-fill)`;
-// Summary figure card: tinted icon and label, large light number, one line of context
-const kpi = ({ icon, tone = "", label, value, note }) => h("div", { class: "kpi" },
-  h("div", { class: "kpi-top" }, h("span", { class: `kpi-icon ${tone}` }, icon()), label),
+// Summary figure: label, large light number, one line of context
+const kpi = ({ label, value, note }) => h("div", { class: "kpi" },
+  h("div", { class: "kpi-label" }, label),
   h("b", null, value),
   note ? h("span", null, note) : null);
 
@@ -381,6 +367,7 @@ async function initWorklist() {
   const o = state.overview;
   wl.date = o.per_day[0].date;
   $("#days-sub").textContent = `${fmtDate(o.window.start, { day: "numeric", month: "long" })} to ${fmtDate(o.window.end, { day: "numeric", month: "long", year: "numeric" })}, ${o.per_day.length} clinic days the model never saw in training.`;
+  renderBandKey();
   renderWlKpis(true);
   renderWlCapture(true);
   renderWeek();
@@ -436,14 +423,14 @@ function renderWlKpis(animate) {
   const auc = x.roc_auc ?? o.models.find((m) => m.model === "XGBoost")?.roc_auc;
   const range = (r, f) => (r ? `95% CI ${f(r[0])} to ${f(r[1])}` : null);
   fill($("#wl-kpis"),
-    kpi({ icon: ICON.alert, tone: "high", label: "High-risk appointments",
+    kpi({ label: "High-risk appointments",
       value: countUp(high, fmtInt, { animate }), note: `${pct(high / booked)} of ${fmtInt(booked)} booked, ${scope}` }),
-    kpi({ icon: ICON.calendarX, tone: "medium", label: "Expected no-shows",
+    kpi({ label: "Expected no-shows",
       value: countUp(expected, fmtInt, { animate }), note: `Actual ${fmtInt(actual)}, ${scope}` }),
-    kpi({ icon: ICON.target, tone: "low", label: "Top-20% capture",
+    kpi({ label: "Top-20% capture",
       value: top20 != null ? countUp(top20, (v) => pct(v, 1), { animate }) : "–",
       note: [range(ci.capture_top20_ci95, (v) => pct(v, 1)), "held-out week"].filter(Boolean).join(", ") }),
-    kpi({ icon: ICON.curve, label: "ROC AUC",
+    kpi({ label: "ROC AUC",
       value: auc != null ? countUp(auc, (v) => v.toFixed(3), { animate }) : "–",
       note: [range(ci.roc_auc_ci95, (v) => v.toFixed(3)), "held-out week"].filter(Boolean).join(", ") }));
 }
@@ -453,6 +440,14 @@ function renderWlCapture(animate) {
     ["Who to contact first", "Share of the held-out week's no-shows reached when calling appointments in order of predicted risk. Hover the line for each step."]);
 }
 
+// Key for the coloured day bars, from the server's band cut-offs (not hard-coded here)
+function renderBandKey() {
+  const { low_below: lo, high_from: hi } = state.meta.bands;
+  fill($("#band-key"),
+    [["High", `${pct(hi)} and above`], ["Medium", `${pct(lo)} to ${pct(hi)}`], ["Low", `under ${pct(lo)}`]]
+      .map(([b, range]) => h("li", null, h("i", { class: "swatch", style: { background: bandFill(b) }, "aria-hidden": "true" }), bandMark(b), h("b", null, b), ` ${range}`)));
+}
+
 function renderWeek() {
   const wl = state.wl;
   const days = state.overview.per_day.map((d) => {
@@ -460,12 +455,13 @@ function renderWeek() {
     const seg = (n, b) => h("i", { style: { width: `${(n / total) * 100}%`, background: bandFill(b) } });
     const btn = h("button", {
       type: "button", class: "day", dataset: { date: d.date }, "aria-pressed": String(wl.scope === "day" && d.date === wl.date),
-      "aria-label": `${d.weekday} ${fmtDate(d.date, { day: "numeric", month: "long" })}: ${fmtInt(d.appointments)} appointments, ${fmtInt(d.high)} high risk, about ${fmtInt(d.expected_dna)} expected no-shows`,
+      "aria-label": `${d.weekday} ${fmtDate(d.date, { day: "numeric", month: "long" })}: ${fmtInt(d.appointments)} appointments; ${fmtInt(d.high)} high, ${fmtInt(d.medium)} medium and ${fmtInt(d.low)} low risk; about ${fmtInt(d.expected_dna)} expected no-shows`,
     },
       h("span", { class: "day-date", "aria-hidden": "true" }, h("small", null, d.weekday.slice(0, 3)), h("b", null, fmtDate(d.date, { day: "numeric" }))),
       h("span", { class: "day-meta" }, h("span", null, h("b", null, fmtInt(d.appointments)), " booked"), h("span", null, h("b", null, fmtInt(d.high)), " high risk")),
-      tipLines(h("span", { class: "day-bar" }, seg(d.high, "High"), seg(d.medium, "Medium"), seg(d.low, "Low")),
-        [`${d.weekday} ${fmtDate(d.date)}`, `High ${fmtInt(d.high)}`, `Medium ${fmtInt(d.medium)}`, `Low ${fmtInt(d.low)}`,
+      tipLines(h("span", { class: "day-bar", title: `High ${fmtInt(d.high)}, Medium ${fmtInt(d.medium)}, Low ${fmtInt(d.low)}` },
+        seg(d.high, "High"), seg(d.medium, "Medium"), seg(d.low, "Low")),
+        [`${d.weekday} ${fmtDate(d.date)}`, `High ${fmtInt(d.high)} (${pct(d.high / total)})`, `Medium ${fmtInt(d.medium)} (${pct(d.medium / total)})`, `Low ${fmtInt(d.low)} (${pct(d.low / total)})`,
           `Expected no-shows ${fmtInt(d.expected_dna)}`, ...(wl.showOutcome ? [`Actually missed ${fmtInt(d.actual_dna)}`] : [])]));
     btn.addEventListener("click", () => setScope("day", d.date));
     return btn;
@@ -822,15 +818,17 @@ async function initModel() {
   const tm = o.test_metrics || {}, x = tm.xgboost || {}, ci = tm.ci || {}, ab = tm.ablations;
   $("#model-lede").textContent = `Tested on ${fmtInt(o.totals.appointments)} appointments from ${fmtDate(o.window.start, { day: "numeric", month: "long" })} to ${fmtDate(o.window.end, { day: "numeric", month: "long", year: "numeric" })}, which the model never saw during training.${state.meta.calibrated ? " Scores are calibrated so they read as probabilities." : ""}`;
   const num = (v, f) => (v != null ? countUp(v, f) : "–");
-  const afterBrier = o.calibration_summary?.test?.after?.brier;
+  // Brier to four decimals from calibration.json, the same figures the README quotes
+  const cal = o.calibration_summary?.test;
+  const brier = cal?.before?.brier ?? x.brier, afterBrier = cal?.after?.brier;
   fill($("#kpis"),
-    kpi({ icon: ICON.curve, label: "ROC AUC", value: num(x.roc_auc, (v) => v.toFixed(3)),
+    kpi({ label: "ROC AUC", value: num(x.roc_auc, (v) => v.toFixed(3)),
       note: ci.roc_auc_ci95 ? `95% CI ${ci.roc_auc_ci95[0].toFixed(3)} to ${ci.roc_auc_ci95[1].toFixed(3)}. 0.5 is chance` : "0.5 is chance, 1.0 is perfect" }),
-    kpi({ icon: ICON.target, tone: "low", label: "PR AUC", value: num(x.pr_auc, (v) => v.toFixed(3)),
+    kpi({ label: "PR AUC", value: num(x.pr_auc, (v) => v.toFixed(3)),
       note: x.pr_auc_lift_vs_random != null ? `${x.pr_auc_lift_vs_random.toFixed(2)}× random (${o.totals.actual_rate.toFixed(3)})` : null }),
-    kpi({ icon: ICON.pulse, tone: "medium", label: "Brier score", value: num(x.brier, (v) => v.toFixed(3)),
-      note: afterBrier != null ? `Before calibration, ${afterBrier.toFixed(3)} after. Lower is better` : "Lower is better" }),
-    kpi({ icon: ICON.alert, tone: "high", label: "Top-10% capture", value: num(x.noshows_captured_top10pct, (v) => pct(v, 1)),
+    kpi({ label: "Brier score", value: num(brier, (v) => v.toFixed(cal ? 4 : 3)),
+      note: afterBrier != null ? `Before calibration, ${afterBrier.toFixed(4)} after. Lower is better` : "Lower is better" }),
+    kpi({ label: "Top-10% capture", value: num(x.noshows_captured_top10pct, (v) => pct(v, 1)),
       note: x.noshows_captured_top20pct != null ? `of no-shows in the riskiest 10%. Top 20% reaches ${pct(x.noshows_captured_top20pct, 1)}` : "of no-shows in the riskiest 10%" }));
 
   renderModelCharts(true);
@@ -863,9 +861,9 @@ function renderModelCharts(first) {
 
 function dataTable(head, rows) {
   return h("details", null, h("summary", null, "Show data table"),
-    h("table", { class: "data-table" },
+    h("div", { class: "table-wrap" }, h("table", { class: "data-table" },
       h("thead", null, h("tr", null, head.map((c, i) => h("th", { class: i ? "num" : null }, c)))),
-      h("tbody", null, rows.map((r) => h("tr", null, r.map((c, i) => h("td", { class: i ? "num" : null }, String(c))))))));
+      h("tbody", null, rows.map((r) => h("tr", null, r.map((c, i) => h("td", { class: i ? "num" : null }, String(c)))))))));
 }
 
 function chartW(el) {
@@ -898,7 +896,7 @@ function captureChart(el, data, animate, head = ["Who to contact first", "Share 
   const hit = s("rect", { class: "hit", x: f.m.l, y: f.m.t, width: f.iw, height: f.ih });
   const svg = s("svg", {
     viewBox: `0 0 ${f.W} ${f.H}`, role: "img", "data-manual-tip": "", class: animate ? "drawn" : null,
-    "aria-label": `Capture curve. Contacting the top 20% reaches ${pct(p20.reached)} of no-shows versus 20% at random.`,
+    "aria-label": `Capture curve. Contacting the top 20% reaches ${pct(p20.reached, 1)} of no-shows versus 20% at random.`,
   },
     yGrid(f, ticks, y, (t) => pct(t)),
     ticks.map((t) => s("text", { class: "tick-label", x: x(t), y: f.H - f.m.b + 20, "text-anchor": "middle" }, pct(t))),
@@ -912,7 +910,10 @@ function captureChart(el, data, animate, head = ["Who to contact first", "Share 
       s("text", { class: "direct-label", x: x(0.45) - 6, y: y(data[9].reached) - 12, "text-anchor": "end" }, "Model ranking"),
       s("line", { x1: x(0.2), x2: x(0.2), y1: y(0), y2: y(p20.reached), stroke: "var(--ink-3)", "stroke-dasharray": "2 3" }),
       s("circle", { class: "dot", cx: x(0.2), cy: y(p20.reached), r: 5 }),
-      s("text", { class: "direct-label", x: x(0.2) + 10, y: y(p20.reached) + 18 }, `Top 20% reaches ${pct(p20.reached)}`)),
+      // Above-left of the dot keeps the label clear of both lines; narrow charts lack the room, so go below-right
+      x(0.2) >= 160
+        ? s("text", { class: "direct-label", x: x(0.2) - 10, y: y(p20.reached) - 12, "text-anchor": "end" }, `Top 20% reaches ${pct(p20.reached, 1)}`)
+        : s("text", { class: "direct-label", x: x(0.2) + 10, y: y(p20.reached) + 18 }, `Top 20% reaches ${pct(p20.reached, 1)}`)),
     cross, hit);
   fill(el, chartHead(...head), svg,
     dataTable(["Contacted", "No-shows reached", "Random"], data.filter((_, i) => i % 2 === 0).map((d) => [pct(d.contacted), pct(d.reached, 1), pct(d.contacted)])));
@@ -924,7 +925,7 @@ function captureChart(el, data, animate, head = ["Who to contact first", "Share 
     cross.setAttribute("visibility", "visible");
     cx.setAttribute("x1", x(d.contacted)); cx.setAttribute("x2", x(d.contacted));
     cd.setAttribute("cx", x(d.contacted)); cd.setAttribute("cy", y(d.reached));
-    showTip([`Contact the riskiest ${pct(d.contacted)}`, `Reach ${pct(d.reached)} of no-shows`, `Random order: ${pct(d.contacted)}`], e.clientX, e.clientY);
+    showTip([`Contact the riskiest ${pct(d.contacted)}`, `Reach ${pct(d.reached, 1)} of no-shows`, `Random order: ${pct(d.contacted)}`], e.clientX, e.clientY);
   });
   hit.addEventListener("pointerleave", () => { cross.setAttribute("visibility", "hidden"); hideTip(); });
 }
@@ -1080,10 +1081,10 @@ async function initMonitoring() {
   $("#sim-note").textContent = m.simulation_note;
   const nAlerts = m.alerts.filter((a) => a.level === "alert").length;
   fill($("#mon-kpis"),
-    kpi({ icon: ICON.alert, tone: nAlerts ? "high" : "low", label: "Alerts raised", value: String(nAlerts), note: "while replaying the held-out days" }),
-    kpi({ icon: ICON.curve, label: "ROC AUC, latest window", value: sortedMetric(last.roc_auc), note: `${fmtDate(last.start)} to ${fmtDate(last.end)}. Alert below ${t.auc_min.toFixed(2)}` }),
-    kpi({ icon: ICON.target, tone: "medium", label: "Calibration error (ECE)", value: sortedMetric(last.ece), note: `Latest window. Alert above ${t.ece_max.toFixed(2)}` }),
-    kpi({ icon: ICON.pulse, tone: "low", label: "Predictions logged", value: fmtInt(m.live.predictions), note: `since the server started (model ${m.model_version})` }));
+    kpi({ label: "Alerts raised", value: String(nAlerts), note: "while replaying the held-out days" }),
+    kpi({ label: "ROC AUC, latest window", value: sortedMetric(last.roc_auc), note: `${fmtDate(last.start)} to ${fmtDate(last.end)}. Alert below ${t.auc_min.toFixed(2)}` }),
+    kpi({ label: "Calibration error (ECE)", value: sortedMetric(last.ece), note: `Latest window. Alert above ${t.ece_max.toFixed(2)}` }),
+    kpi({ label: "Predictions logged", value: fmtInt(m.live.predictions), note: `since the server started (model ${m.model_version})` }));
 
   // Alerts
   fill($("#mon-alerts"), h("h2", null, "Alerts"),
@@ -1112,17 +1113,17 @@ async function initMonitoring() {
   rateChart($("#mon-rate"), m.base_rate, m.performance.daily);
 
   // Weekly performance
-  const wk = (w) => h("tr", null, h("td", null, `${fmtDate(w.start)} to ${fmtDate(w.end)}`), h("td", { class: "num" }, String(w.days)),
+  const wk = (w) => h("tr", null, h("td", { class: "nowrap" }, `${fmtDate(w.start)} to ${fmtDate(w.end)}`), h("td", { class: "num" }, String(w.days)),
     h("td", { class: "num" }, fmtInt(w.rows)),
     h("td", { class: `num${w.roc_auc != null && w.roc_auc < t.auc_min ? " psi-alert" : ""}` }, sortedMetric(w.roc_auc)),
     h("td", { class: `num${w.ece != null && w.ece > t.ece_max ? " psi-alert" : ""}` }, sortedMetric(w.ece)),
     h("td", { class: "num" }, `${pct(w.observed_rate, 1)} / ${pct(w.mean_predicted, 1)}`));
   fill($("#mon-perf"), h("h2", null, "Accuracy and calibration by week"),
     h("p", { class: "sub" }, "Calendar weeks of the held-out period. Each has only three appointment days, so treat small movements as noise."),
-    h("table", { class: "data-table" },
+    h("div", { class: "table-wrap" }, h("table", { class: "data-table" },
       h("thead", null, h("tr", null, h("th", null, "Window"), h("th", { class: "num" }, "Days"), h("th", { class: "num" }, "Rows"),
         h("th", { class: "num" }, "ROC AUC"), h("th", { class: "num" }, "ECE"), h("th", { class: "num" }, "Observed / predicted"))),
-      h("tbody", null, weekly.map(wk))),
+      h("tbody", null, weekly.map(wk)))),
     dataTable(["Day", "ROC AUC", "ECE", "Observed / predicted"], m.performance.daily.map((d) =>
       [fmtDate(d.date), sortedMetric(d.roc_auc), sortedMetric(d.ece), `${pct(d.observed_rate, 1)} / ${pct(d.mean_predicted, 1)}`])));
 }

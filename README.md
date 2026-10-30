@@ -6,7 +6,11 @@ Missed outpatient appointments ("Did Not Attend", DNA) waste clinic capacity and
 
 **Live demo:** [TODO: public link] · **Code:** [TODO: GitHub link]
 
-[TODO: add 2–3 screenshots: the worklist, a SHAP explanation, the Model page]
+![Worklist: summary figures, capture curve, held-out days, and an appointment's SHAP explanation](docs/worklist.png)
+
+| Model | Monitoring |
+|---|---|
+| ![Model page: test-set metrics, capture curve, lead time and calibration](docs/model.png) | ![Monitoring page: drift, alerts and weekly performance from the replay](docs/monitoring.png) |
 
 ## Results (held-out later dates)
 
