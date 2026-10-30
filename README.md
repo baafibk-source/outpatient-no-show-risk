@@ -135,4 +135,4 @@ uvicorn dashboard.server:app --reload
 
 ## Data and licence
 
-Code: MIT (see LICENSE). Data: Kaggle Medical Appointment No Shows by Joni Hoppen (Aquarela Analytics), used under the terms on its Kaggle page. Neither the raw CSV nor the cleaned feature table is in this repository. The live demo's Space bundles the cleaned table under the same non-commercial terms.
+Code: MIT (see LICENSE). Data: [Kaggle Medical Appointment No Shows](https://www.kaggle.com/datasets/joniarroba/noshowappointments) by Joni Hoppen (Aquarela Analytics), used under the terms on its Kaggle page. Neither the raw CSV nor the cleaned feature table is in this repository. The live demo's Space bundles the cleaned table under the same non-commercial terms.
