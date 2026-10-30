@@ -139,6 +139,65 @@ def fallback_summary(ctx):
     return text + f"\n\nSuggested action: {ctx_action(ctx)}"
 
 
+CHAT_TOPICS = [
+    ("lower", ("lower", "reduce", "improve", "what can")),
+    ("model", ("reliab", "accura", "trust", "model", "auc")),
+    ("why", ("why", "level", "reason", "explain")),
+]
+CARD_SECTIONS = ("- Held-out results", "- Scores are calibrated", "- Limitations")
+
+
+def _staff_tip(f):
+    """What staff can do about one risk-raising factor, or None when it describes the patient."""
+    if f["feature"] in ("lead_time_days", "same_day_booking"):
+        return "confirm the appointment nearer the date, since plans change more over a long gap"
+    if f["feature"] == "sms_received" and f["value"] == "No":
+        return "send an SMS reminder"
+    if f["feature"] == "multiple_appts_same_day" and f["value"] == "Yes":
+        return "one contact can cover all of this patient's bookings that day"
+    return None
+
+
+def fallback_lower(ctx):
+    ups = [f for f in ctx["factors"][:6] if f["shap"] > 0]
+    text = f"Suggested action: {ctx_action(ctx)}"
+    if not ups:
+        return text + "\n\nNone of the main factors raise the risk for this appointment, so the suggested action is enough."
+    tips, seen, fixed = [], set(), []
+    for f in ups:
+        tip = _staff_tip(f)
+        if tip and tip not in seen:
+            seen.add(tip)
+            tips.append(f"- {f['label']} ({f['value']}): {tip}.")
+        elif not tip:
+            fixed.append(f"{f['label'].lower()} ({f['value']})")
+    if tips:
+        text += "\n\nWhat staff can act on:\n" + "\n".join(tips)
+    if fixed:
+        text += ("\n\nAlso raising the risk, but not something staff can change: " + ", ".join(fixed)
+                 + ". The suggested contact is how to offer extra support for these.")
+    return text
+
+
+def fallback_model(model_card):
+    picked = [line for line in model_card.splitlines() if line.startswith(CARD_SECTIONS)]
+    return "\n".join(["About the model:"] + picked) if picked else model_card
+
+
+def fallback_chat(model_card, ctx, question):
+    """Chat answer without the LLM: matches the question to a topic and answers from server-side facts only."""
+    q = (question or "").lower()
+    topic = next((name for name, words in CHAT_TOPICS if any(w in q for w in words)), None)
+    if topic == "lower":
+        return fallback_lower(ctx)
+    if topic == "model":
+        return fallback_model(model_card)
+    if topic == "why":
+        return fallback_summary(ctx)
+    return ("I can't answer free-text questions right now, but here is the explanation for this appointment.\n\n"
+            + fallback_summary(ctx))
+
+
 def fallback_reminder(channel):
     if channel == "sms":
         return ("Hi [Name], this is a reminder of your appointment at [Clinic] on [Date] at [Time]. "

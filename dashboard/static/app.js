@@ -300,12 +300,15 @@ function mountAI(el, ref) {
     }
   }));
 
-  if (!llm) return;
+  // Chat is always offered: without the AI model the server answers from standard templates
   const log = h("div", { class: "chat-log", "aria-live": "polite" });
   const input = h("input", { type: "text", name: "q", placeholder: "Ask about this prediction", "aria-label": "Ask about this prediction", maxlength: "400" });
   const send = h("button", { class: "btn", type: "submit" }, "Ask");
   const form = h("form", { class: "chat-form" }, input, send);
-  const push = (role, text) => { log.append(h("div", { class: `msg ${role}` }, text)); log.scrollTop = log.scrollHeight; };
+  const push = (role, text, note) => {
+    add(log, [h("div", { class: `msg ${role}` }, text), note ? h("p", { class: "small muted" }, note) : null]);
+    log.scrollTop = log.scrollHeight;
+  };
   const ask = async (q) => {
     q = q.trim();
     if (!q) return;
@@ -316,7 +319,7 @@ function mountAI(el, ref) {
     try {
       const r = await api("/api/chat", { context: ctx, messages: history.slice(-8) });
       history.push({ role: "assistant", content: r.text });
-      push("assistant", r.text);
+      push("assistant", r.text, r.source === "template" ? "AI assistant unavailable. Showing a standard answer." : null);
     } catch (err) {
       push("assistant", `Couldn't reach the server: ${err.message}`);
     } finally {

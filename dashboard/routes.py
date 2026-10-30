@@ -10,7 +10,7 @@ from monitoring.prediction_log import log_prediction
 
 from .config import ACTIONS, HIGH_CUT, LOW_CUT, WEEKDAYS
 from .data import capture_curve, lead_time_rates, repeat_summary
-from .llm import LIMIT_NOTE, chat_messages, fallback_reminder, fallback_summary, \
+from .llm import LIMIT_NOTE, chat_messages, fallback_chat, fallback_reminder, fallback_summary, \
     reminder_messages, summary_messages
 from .model import action_for
 from .schemas import AppointmentIn, Band, ChatIn, ContextIn, ReminderIn
@@ -223,15 +223,16 @@ def reminder(body: ReminderIn, request: Request):
 @router.post("/api/chat")
 def chat(body: ChatIn, request: Request):
     s = S(request)
-    if not s.llm.enabled:
-        return {"text": "The AI assistant isn't enabled on this server. Set an HF_TOKEN environment variable "
-                        "to turn it on.", "source": "template"}
     ctx = s.resolve_context(body.context)
+    # Without the LLM, answer the latest staff question from server-side facts, like summary and reminder do
+    question = next((m.content for m in reversed(body.messages) if m.role == "user"), "")
+    if not s.llm.enabled:
+        return {"text": fallback_chat(s.model_card, ctx, question), "source": "template"}
     if not s.llm.allowed(request):
-        return {"text": LIMIT_NOTE + "\n\n" + fallback_summary(ctx), "source": "template", "error": "rate_limited"}
+        return {"text": LIMIT_NOTE + "\n\n" + fallback_chat(s.model_card, ctx, question),
+                "source": "template", "error": "rate_limited"}
     try:
         return {"text": s.llm.call(chat_messages(s.model_card, ctx, body.messages), max_tokens=300), "source": "llm"}
     except Exception as e:
         log.warning("LLM chat failed: %s", type(e).__name__)
-        return {"text": "The AI model isn't responding right now. Try again shortly.",
-                "source": "template", "error": "unavailable"}
+        return {"text": fallback_chat(s.model_card, ctx, question), "source": "template", "error": "unavailable"}

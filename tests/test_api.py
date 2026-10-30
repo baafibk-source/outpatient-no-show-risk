@@ -1,7 +1,9 @@
 """Main endpoints, through FastAPI's TestClient with the tiny fixture model."""
 from types import SimpleNamespace as NS
 
-from dashboard.llm import LLM
+import pytest
+
+from dashboard.llm import LIMIT_NOTE, LLM
 
 
 def test_health(client):
@@ -105,7 +107,8 @@ def test_template_fallbacks_without_a_token(client):
     r = client.post("/api/reminder", json={"context": {"appointment": {}}, "channel": "call"}).json()
     assert r["source"] == "template" and "[Name]" in r["text"]
     c = client.post("/api/chat", json={"context": {"appointment": {}}, "messages": [{"role": "user", "content": "hi"}]}).json()
-    assert c["source"] == "template" and "HF_TOKEN" in c["text"]
+    assert c["source"] == "template" and "error" not in c
+    assert c["text"].startswith("I can't answer free-text questions right now") and "Suggested action:" in c["text"]
 
 
 def test_llm_endpoints_reject_client_built_context(client):
@@ -154,6 +157,45 @@ def test_llm_failure_and_rate_limit_fall_back_to_templates(client_factory):
     first = limited.post("/api/reminder", json={"context": {"appointment": {}}}).json()
     second = limited.post("/api/reminder", json={"context": {"appointment": {}}}).json()
     assert first["source"] == "llm" and second["error"] == "rate_limited" and second["source"] == "template"
+
+
+CHAT_QUESTIONS = {
+    "What would lower the risk?": "Suggested action:",
+    "How reliable is this model?": "Held-out results: ROC AUC 0.70",
+    "Why is the risk at this level?": "predicted chance of a no-show",
+}
+
+
+def ask(c, question):
+    r = c.post("/api/chat", json={"context": {"appointment": {"lead_time_days": 30, "sms_received": False}},
+                                  "messages": [{"role": "user", "content": question}]})
+    assert r.status_code == 200
+    return r.json()
+
+
+@pytest.mark.parametrize("question,expected", CHAT_QUESTIONS.items())
+def test_chat_falls_back_to_a_standard_answer(client_factory, question, expected):
+    failing = client_factory(llm=LLM(client=FakeClient(fail=True)))
+    no_token = client_factory(llm=LLM())
+    limited = client_factory(llm=LLM(client=FakeClient(), per_ip_hour=0))
+    for c, error in ((failing, "unavailable"), (no_token, None), (limited, "rate_limited")):
+        r = ask(c, question)
+        assert r["source"] == "template" and r.get("error") == error
+        assert r["text"].strip() and expected in r["text"]
+        assert "isn't responding" not in r["text"] and "isn't enabled" not in r["text"]
+    assert ask(limited, question)["text"].startswith(LIMIT_NOTE)
+
+
+def test_chat_fallback_answers_use_only_server_facts(client_factory):
+    c = client_factory(llm=LLM(client=FakeClient(fail=True)))
+    lower = ask(c, "What would lower the risk?")["text"]
+    model = ask(c, "How reliable is this model?")["text"]
+    assert "Limitations:" in model and "Scores are calibrated" in model and "Not NHS data" not in model
+    # Only factors that actually raise this appointment's risk are offered as things to act on
+    ctx = c.post("/api/predict", json={"lead_time_days": 30, "sms_received": False}).json()
+    raising = {f["label"] for f in ctx["factors"][:6] if f["shap"] > 0}
+    for label in ("Days between booking and appointment", "SMS reminder sent"):
+        assert (f"- {label}" in lower) == (label in raising)
 
 
 def test_client_ip_uses_the_proxy_appended_entry(client):
